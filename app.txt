@@ -649,8 +649,9 @@ function Show-View([string]$v) {
     $ui[$v].BeginAnimation([Windows.UIElement]::OpacityProperty, $fade)
 }
 function Show-Prep([string]$title, [string]$sub) { $ui.PrepTitle.Text = $title; $ui.PrepSub.Text = $sub; Show-View 'VPrep' }
-function Show-Error([string]$msg) {
+function Show-Error([string]$msg, [string]$title = 'Un problème est survenu') {
     Stop-Croc
+    $ui.ErrTitle.Text = $title
     $ui.ErrSub.Text = $msg
     Show-View 'VError'
 }
@@ -1093,6 +1094,10 @@ function Update-Logic {
     if ($Mode -eq 'recv' -and $S.View -eq 'VPrep' -and $S.Running -and $S.StartTime -and -not $S.GotProgress -and ((Get-Date) - $S.StartTime).TotalSeconds -gt 7) {
         $ui.PrepTitle.Text = "En attente de l'expéditeur…"
         $ui.PrepSub.Text = "Le transfert démarre tout seul dès que l'expéditeur a Onde ouvert avec LE MÊME CODE : $($S.Code). Destination : « $(Get-DestLabel) »."
+    }
+    if ($Mode -eq 'recv' -and $S.View -eq 'VPrep' -and $S.Running -and $S.StartTime -and -not $S.GotProgress -and ((Get-Date) - $S.StartTime).TotalSeconds -gt 90) {
+        Show-Error "Personne n'envoie avec le code $($S.Code). Soit l'expéditeur n'a pas encore ouvert Onde, soit ce lien est périmé (chaque lien ne sert qu'une fois). Demande-lui le dernier lien, puis clique sur Réessayer." 'Aucun envoi trouvé pour ce code'
+        return
     }
     if ($S.Bg.ContainsKey('croc')) {
         $r = Receive-Bg 'croc'
