@@ -1123,9 +1123,9 @@ function Update-Logic {
         $ui.PrepTitle.Text = "En attente de l'expéditeur…"
         $ui.PrepSub.Text = "Le transfert démarre tout seul dès que l'expéditeur a Onde ouvert avec LE MÊME CODE : $($S.Code). Destination : « $(Get-DestLabel) »."
     }
-    if ($Mode -eq 'recv' -and $S.View -eq 'VPrep' -and $S.Running -and $S.StartTime -and -not $S.GotProgress -and ((Get-Date) - $S.StartTime).TotalSeconds -gt 90) {
-        Show-Error "Personne n'envoie avec le code $($S.Code). Soit l'expéditeur n'a pas encore ouvert Onde, soit ce lien est périmé (chaque lien ne sert qu'une fois). Demande-lui le dernier lien, puis clique sur Réessayer." 'Aucun envoi trouvé pour ce code'
-        return
+    if ($Mode -eq 'recv' -and $S.View -eq 'VPrep' -and $S.Running -and $S.StartTime -and -not $S.GotProgress -and ((Get-Date) - $S.StartTime).TotalSeconds -gt 120) {
+        $ui.PrepTitle.Text = "En attente de l'expéditeur…"
+        $ui.PrepSub.Text = "Rien reçu pour l'instant. Pour un très gros dossier, c'est normal : l'expéditeur prépare l'envoi, ça peut prendre plusieurs minutes — laisse cette fenêtre ouverte. Sinon, vérifie que son code est bien $($S.Code)."
     }
     if ($S.Bg.ContainsKey('croc')) {
         $r = Receive-Bg 'croc'
