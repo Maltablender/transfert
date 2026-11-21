@@ -762,8 +762,8 @@ function Read-Line([string]$l) {
                 $S.PrepCurMax = $max; $S.PrepLastPct = $pct
                 if ($pct -ge 100 -and -not $S.PrepCounted) { $S.PrepDone += $max; $S.PrepCounted = $true }
                 $povr = $S.PrepDone + $(if ($S.PrepCounted) { 0 } else { $cur })
-                $ptot = if ($S.Size -gt 0) { [double]$S.Size } else { $max }
-                $pp = if ($ptot -gt 0) { [math]::Min(99.9, 100 * $povr / $ptot) } else { $pct }
+                $ptot = [math]::Max([double]$S.Size, $povr)
+                $pp = if ($ptot -gt 0) { [math]::Min(99.9, 100 * $povr / $ptot) } else { 0 }
                 $ui.PrepBarBox.Visibility = 'Visible'
                 $ui.PrepBarLbl.Text = ('Préparation du dossier… {0:N0} %  (' -f [math]::Floor($pp)) + (Format-Size ([math]::Min($povr, $ptot))) + ' / ' + (Format-Size $ptot) + ')'
                 $ui.PrepBarFill.Width = [math]::Max(0, [math]::Min(400, 400 * $pp / 100))
@@ -862,7 +862,7 @@ function Send-Ready {
     $ui.WaitState.Text = 'Prêt · ton client peut recevoir maintenant'
     try { $ui.WaitDot.Fill = New-Brush 255 52 211 153 } catch {}
     try { $ui.PrepBarBox.Visibility = 'Collapsed'; $ui.PrepBarFill.Width = 0 } catch {}
-    $ui.WaitInfo.Text = ('{0:N0} fichiers · {1:N0} dossiers · {2}. C''est prêt : le gros transfert se lance (avec barre de progression ici) dès que ton client ouvre le lien.' -f $sc.Files, $sc.Dirs, (Format-Size $S.Size))
+    $ui.WaitInfo.Text = ('{0:N0} fichiers · {1:N0} dossiers · {2}. Envoie le lien dès maintenant : ton client peut l''ouvrir tout de suite, le téléchargement démarre tout seul quand la préparation est finie. Une seule barre pour tout le dossier.' -f $sc.Files, $sc.Dirs, (Format-Size $S.Size))
     if ($sc.Errors -gt 0) {
         $ui.WaitWarn.Text = "Attention : $($sc.Errors) élément(s) illisible(s) (accès refusé), par exemple : " + (($sc.Bad | Select-Object -First 2) -join ', ')
         $ui.WaitWarn.Visibility = 'Visible'
