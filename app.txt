@@ -289,6 +289,7 @@ $Xaml = @'
               <TextBlock x:Name="WaitWarn" FontSize="12.5" Foreground="#FBBF24" Margin="19,6,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
             </StackPanel>
           </Border>
+          <Button x:Name="BtnSelfTest" Style="{StaticResource LinkBtn}" Content="M'envoyer ce dossier à moi-même (test sur ce PC)  →" Margin="0,12,0,0"/>
         </StackPanel>
 
         <!-- TRANSFERT EN COURS -->
@@ -462,7 +463,7 @@ try {
     $win = [Windows.Markup.XamlReader]::Parse($Xaml)
     $ui = @{}
     foreach ($n in 'Root','TitleBar','BtnMin','BtnClose','VIdle','Drop','DropRect','DropFloat','VPrep','SpinRot','PrepTitle','PrepSub',
-                   'VWait','WaitSub','MsgBox','BtnCopy','BtnCopyCode','CodeText','BtnCancelWait','WaitDot','WaitState','WaitInfo','WaitWarn',
+                   'VWait','WaitSub','MsgBox','BtnCopy','BtnCopyCode','CodeText','BtnCancelWait','WaitDot','WaitState','WaitInfo','WaitWarn','BtnSelfTest',
                    'VRun','RunTitle','RunSub','Pct','BarTrack','BarFill','Fx','StDone','StSpeed','StEta','CurFile','BtnCancelRun',
                    'VDone','CheckScale','DoneTitle','DoneSub','DoneVerifyBox','DoneVerify','BtnDone1','BtnDone2',
                    'VError','ErrTitle','ErrSub','BtnErr1','BtnErr2','VCode','CodeBox','BtnCode','Foot',
@@ -927,12 +928,28 @@ function Start-Recv {
     Start-RecvCroc
 }
 function Start-RecvCroc {
+    if (-not $S.Stage) { $S.Stage = Join-Path $S.Dest ('.onde-' + (Get-CodeHash $S.Code).Substring(0, 10)) }
+    try { New-Item -ItemType Directory -Force -Path $S.Stage | Out-Null; (Get-Item -LiteralPath $S.Stage -Force).Attributes = ([IO.FileAttributes]::Directory -bor [IO.FileAttributes]::Hidden) } catch {}
     if (-not $S.GotProgress -and $S.View -ne 'VRun' -and $S.Retries -eq 0) { Show-Prep 'Connexion sécurisée…' "Le dossier sera enregistré dans « $(Get-DestLabel) »." }
     if (-not $S.StartTime -or $S.Retries -eq 0) { $S.StartTime = Get-Date }
-    Start-Croc ('--yes --overwrite --out "' + $S.Dest + '"') @{ CROC_SECRET = $S.Code }
+    Start-Croc ('--yes --overwrite --out "' + $S.Stage + '"') @{ CROC_SECRET = $S.Code }
+}
+function Start-SelfTest {
+    if (-not $S.Code) { return }
+    try {
+        $psi = New-Object Diagnostics.ProcessStartInfo
+        $psi.FileName = 'powershell.exe'
+        $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command "[Net.ServicePointManager]::SecurityProtocol=''Tls12''; iex (irm ' + $Site + 'app.txt)"'
+        $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true; $psi.WindowStyle = 'Hidden'
+        $psi.EnvironmentVariables['TS_MODE'] = 'recv'
+        $psi.EnvironmentVariables['TS_CODE'] = $S.Code
+        [Diagnostics.Process]::Start($psi) | Out-Null
+    } catch {}
 }
 function Clear-RecvTraces {
-    if ($Mode -ne 'recv' -or -not $AppDir) { return }
+    if ($Mode -ne 'recv') { return }
+    if ($S.Stage) { try { Remove-Item -LiteralPath $S.Stage -Recurse -Force -ErrorAction SilentlyContinue } catch {}; $S.Stage = $null }
+    if (-not $AppDir) { return }
     try {
         $psi = New-Object Diagnostics.ProcessStartInfo 'cmd.exe', ('/c ping 127.0.0.1 -n 3 >nul & rd /s /q "' + $AppDir + '"')
         $psi.WindowStyle = 'Hidden'; $psi.CreateNoWindow = $true
@@ -941,54 +958,69 @@ function Clear-RecvTraces {
 }
 function Recv-Finished {
     $verify = ''; $ok = $true; $root = $null
+    $src = if ($S.Stage -and (Test-Path -LiteralPath $S.Stage)) { $S.Stage } else { $S.Dest }
+    $attrs = New-Object System.Collections.Generic.List[object]
     try {
-        $mf = Get-ChildItem -LiteralPath $S.Dest -Filter '*.sillage' -File -Force | Where-Object { $_.LastWriteTime -ge $S.StartTime.AddHours(-48) } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-        if (-not $mf) { $mf = Get-ChildItem -LiteralPath $S.Dest -Filter '*.tsattr' -File -Force | Sort-Object LastWriteTime -Descending | Select-Object -First 1 }
+        $mf = Get-ChildItem -LiteralPath $src -Filter '*.sillage' -File -Force | Sort-Object LastWriteTime -Descending | Select-Object -First 1
         if ($mf) {
             $nF = 0; $nD = 0; $missing = New-Object System.Collections.Generic.List[string]
-            $attrs = New-Object System.Collections.Generic.List[object]
             foreach ($line in [IO.File]::ReadAllLines($mf.FullName, [Text.Encoding]::UTF8)) {
                 $parts = $line -split "`t"
-                if ($parts.Count -eq 2) { $parts = @('?', '0', $parts[0], $parts[1]) }   # ancien format
                 if ($parts.Count -lt 4) { continue }
                 $rel = ($parts[3..($parts.Count - 1)] -join "`t")
-                if ($rel -match '(^|\\)\.\.(\\|$)' -or [IO.Path]::IsPathRooted($rel)) { continue }
-                if (-not $root) { $root = ($rel -split '\\')[0] }
-                $p = Join-Path $S.Dest $rel
+                $segs = $rel.Split([char]92, [char]47)
+                if (($segs -contains '..') -or [IO.Path]::IsPathRooted($rel)) { continue }
+                if (-not $root) { $root = $segs[0] }
+                $sp = Join-Path $src $rel
                 if ($parts[0] -eq 'D') {
                     $nD++
-                    if (-not (Test-Path -LiteralPath $p)) { try { New-Item -ItemType Directory -Force -Path $p | Out-Null } catch { $missing.Add($rel) } }
+                    if (-not (Test-Path -LiteralPath $sp)) { try { New-Item -ItemType Directory -Force -Path $sp | Out-Null } catch { $missing.Add($rel) } }
                 } elseif ($parts[0] -eq 'F') {
                     $nF++
-                    $fi = $null; try { $fi = Get-Item -LiteralPath $p -Force -ErrorAction Stop } catch {}
+                    $fi = $null; try { $fi = Get-Item -LiteralPath $sp -Force -ErrorAction Stop } catch {}
                     if (-not $fi -or $fi.Length -ne [int64]$parts[1]) { $missing.Add($rel) }
                 }
-                if ($parts[2]) { $attrs.Add(@($p, $parts[2])) }
-            }
-            # attributs (cachés / système / lecture seule) appliqués en dernier, du plus profond au plus haut
-            for ($i = $attrs.Count - 1; $i -ge 0; $i--) {
-                $p = $attrs[$i][0]; $fl = $attrs[$i][1]
-                try {
-                    $item = Get-Item -LiteralPath $p -Force -ErrorAction Stop
-                    $a = $item.Attributes
-                    if ($fl -match 'H') { $a = $a -bor [IO.FileAttributes]::Hidden }
-                    if ($fl -match 'S') { $a = $a -bor [IO.FileAttributes]::System }
-                    if ($fl -match 'R') { $a = $a -bor [IO.FileAttributes]::ReadOnly }
-                    $item.Attributes = $a
-                } catch {}
+                if ($parts[2]) { $attrs.Add(@($rel, $parts[2])) }
             }
             Remove-Item -LiteralPath $mf.FullName -Force
             if ($nF -gt 0 -or $nD -gt 0) {
                 if ($missing.Count -eq 0) { $verify = ('✓  Vérifié : {0:N0} fichiers et {1:N0} dossiers, rien ne manque.' -f $nF, $nD) }
-                else { $ok = $false; $ex = ($missing | Select-Object -First 2) -join ', '; $verify = ('Attention : {0} élément(s) incomplet(s), par exemple {1}. Demande à l''expéditeur de renvoyer.' -f $missing.Count, $ex) }
+                else { $ok = $false; $ex = ($missing | Select-Object -First 2) -join ', '; $verify = ('Transfert incomplet ({0} élément(s) manquant(s), ex. {1}). Rien n''a été déposé dans ton dossier ; demande un nouvel envoi.' -f $missing.Count, $ex) }
             }
         }
     } catch {}
-    $S.Opened = if ($root) { Join-Path $S.Dest $root } else { $S.Dest }
+    # Rien n'est posé dans le dossier final tant que le transfert n'est pas complet et vérifié
+    if ($ok -and $S.Stage -and (Test-Path -LiteralPath $S.Stage)) {
+        try {
+            foreach ($item in (Get-ChildItem -LiteralPath $S.Stage -Force)) {
+                if ($item.Extension -eq '.sillage') { continue }
+                $target = Join-Path $S.Dest $item.Name
+                if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force -ErrorAction SilentlyContinue }
+                Move-Item -LiteralPath $item.FullName -Destination $target -Force
+            }
+        } catch {}
+        for ($i = $attrs.Count - 1; $i -ge 0; $i--) {
+            $p = Join-Path $S.Dest $attrs[$i][0]; $fl = $attrs[$i][1]
+            try {
+                $item = Get-Item -LiteralPath $p -Force -ErrorAction Stop
+                $a = $item.Attributes
+                if ($fl -match 'H') { $a = $a -bor [IO.FileAttributes]::Hidden }
+                if ($fl -match 'S') { $a = $a -bor [IO.FileAttributes]::System }
+                if ($fl -match 'R') { $a = $a -bor [IO.FileAttributes]::ReadOnly }
+                $item.Attributes = $a
+            } catch {}
+        }
+    }
+    $hadStage = [bool]($S.Stage)
     Clear-RecvTraces
+    $S.Opened = if ($root) { Join-Path $S.Dest $root } else { $S.Dest }
     $size = if ($S.Total -gt 0) { ' (' + (Format-Size $S.Total) + ')' } else { '' }
-    Show-Done 'Dossier reçu' "Tout est arrivé$size dans « $(Get-DestLabel) »." $verify $ok 'Ouvrir le dossier'
-    Open-Received
+    if ($ok) {
+        Show-Done 'Dossier reçu' "Tout est arrivé$size dans « $(Get-DestLabel) », dans son format d'origine." $verify $true 'Ouvrir le dossier'
+        Open-Received
+    } else {
+        Show-Done 'Transfert incomplet' "Le transfert n'est pas allé au bout. Rien n'a été ajouté à ton dossier, donc aucun fichier abîmé. Demande un nouvel envoi." $verify $false 'Ouvrir le dossier'
+    }
 }
 function Open-Received {
     try {
@@ -1271,6 +1303,7 @@ $confirmStop = {
     if ($Mode -eq 'send') { Reset-Send } else { Stop-Croc; $win.Close() }
 }
 $ui.BtnCancelWait.Add_Click($confirmStop)
+$ui.BtnSelfTest.Add_Click({ Start-SelfTest; $ui.BtnSelfTest.Content = 'Fenêtre de réception ouverte… choisis l''emplacement dedans'; $ui.BtnSelfTest.IsEnabled = $false })
 $ui.BtnCancelRun.Add_Click($confirmStop)
 $ui.BtnDone1.Add_Click({ if ($Mode -eq 'send') { Reset-Send } else { Open-Received } })
 $ui.BtnDone2.Add_Click({ $win.Close() })
