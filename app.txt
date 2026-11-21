@@ -25,7 +25,7 @@ try { [void][SillageNative.W]::ShowWindow([SillageNative.W]::GetConsoleWindow(),
 $Xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Onde" Width="560" Height="740" WindowStyle="None" AllowsTransparency="True"
+        Title="" Width="560" Height="740" WindowStyle="None" AllowsTransparency="True"
         Background="Transparent" ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen"
         FontFamily="Segoe UI Variable Display, Segoe UI" Foreground="#F2F2F2" UseLayoutRounding="True">
   <Window.Resources>
@@ -141,6 +141,25 @@ $Xaml = @'
       <Setter Property="Foreground" Value="#F2F2F2"/>
       <Setter Property="Margin" Value="0,3,0,0"/>
     </Style>
+    <Style x:Key="FolderItem" TargetType="ListBoxItem">
+      <Setter Property="Padding" Value="11,9"/>
+      <Setter Property="Margin" Value="3,1"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListBoxItem">
+            <Border x:Name="b" CornerRadius="9" Background="Transparent" Padding="{TemplateBinding Padding}">
+              <ContentPresenter VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#18181C"/></Trigger>
+              <Trigger Property="IsSelected" Value="True"><Setter TargetName="b" Property="Background" Value="#2C0E12"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
   </Window.Resources>
 
   <Border x:Name="Root" Margin="18" CornerRadius="16" BorderBrush="#232326" BorderThickness="1" AllowDrop="True">
@@ -178,12 +197,11 @@ $Xaml = @'
       <!-- barre de titre -->
       <Grid x:Name="TitleBar" Background="Transparent" Margin="22,0,14,0">
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-          <Viewbox Height="23" VerticalAlignment="Center">
-            <Canvas Width="76" Height="30">
-              <Canvas.RenderTransform><TranslateTransform Y="8"/></Canvas.RenderTransform>
-              <Path Data="M14.3,12 A6.3,6.3 0 1 1 8,5.7" Stroke="#E11D2E" StrokeThickness="3.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-              <Ellipse Canvas.Left="10.55" Canvas.Top="5.65" Width="3.8" Height="3.8" Fill="White"/>
-              <Path Data="M22.7,20 L22.7,12 A6.3,6.3 0 0 1 35.3,12 L35.3,20 M54.3,-6 L54.3,20 M41.7,12 A6.3,6.3 0 1 0 54.3,12 A6.3,6.3 0 1 0 41.7,12 M60.7,12 L73.3,12 A6.3,6.3 0 1 0 71.83,16.05" Stroke="White" StrokeThickness="3.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+          <Viewbox Width="26" Height="26" VerticalAlignment="Center">
+            <Canvas Width="32" Height="32">
+              <Rectangle Width="32" Height="32" RadiusX="8" RadiusY="8" Fill="#15151A"/>
+              <Path Data="M25,16 A9,9 0 1 1 16,7" Stroke="#E11D2E" StrokeThickness="4.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+              <Ellipse Canvas.Left="19.76" Canvas.Top="7.04" Width="5.2" Height="5.2" Fill="White"/>
             </Canvas>
           </Viewbox>
           <Border Background="#161616" CornerRadius="12" Padding="8,3" Margin="12,0,0,0" VerticalAlignment="Center">
@@ -381,6 +399,45 @@ $Xaml = @'
           <TextBlock x:Name="Foot" Text="Direct d'un PC à l'autre · rien n'est stocké en ligne · sans limite de taille" FontSize="12" Foreground="#5E5E5E" Margin="10,0,0,0" VerticalAlignment="Center"/>
         </StackPanel>
       </Border>
+
+      <!-- navigateur de dossiers -->
+      <Border x:Name="Browse" Grid.RowSpan="3" Visibility="Collapsed" Background="#DC060607" CornerRadius="19">
+        <Border Width="548" MaxHeight="600" Margin="0,24" VerticalAlignment="Center" HorizontalAlignment="Center" CornerRadius="18" Background="#0E0E10" BorderBrush="#2A2A2E" BorderThickness="1">
+          <Border.Effect><DropShadowEffect BlurRadius="46" ShadowDepth="14" Opacity="0.7" Color="#000000"/></Border.Effect>
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="*"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid Margin="24,22,14,0">
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock x:Name="BrowseTitle" FontSize="20" FontWeight="SemiBold" Foreground="#F2F2F2" Text="Choisir un dossier"/>
+                <TextBlock x:Name="BrowsePath" FontSize="12.5" Foreground="#7A7A80" Margin="0,5,0,0" TextTrimming="CharacterEllipsis"/>
+              </StackPanel>
+              <Button x:Name="BrowseClose" Style="{StaticResource TitleBtn}" HorizontalAlignment="Right" VerticalAlignment="Top">
+                <Path Data="M0,0 L9,9 M9,0 L0,9" Stroke="#8C8C8C" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+              </Button>
+            </Grid>
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="24,18,24,0">
+              <Button x:Name="BrowseUp" Style="{StaticResource Ghost}" Height="36" Width="46">
+                <Path Data="M9,3 L4,8 M9,3 L14,8 M9,3 L9,15" Stroke="#DDDDDD" StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+              </Button>
+              <WrapPanel x:Name="BrowseQuick" Margin="8,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+            <Border Grid.Row="2" Margin="24,14,24,0" CornerRadius="12" Background="#09090A" BorderBrush="#1E1E20" BorderThickness="1">
+              <ListBox x:Name="BrowseList" Background="Transparent" BorderThickness="0" Padding="4" Foreground="#EDEDED"
+                       ItemContainerStyle="{StaticResource FolderItem}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+            </Border>
+            <Grid Grid.Row="3" Margin="24,16,24,20">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="158"/></Grid.ColumnDefinitions>
+              <Button x:Name="BrowseGo" Style="{StaticResource Primary}" Content="Choisir ce dossier"/>
+              <Button x:Name="BrowseCancel" Grid.Column="2" Style="{StaticResource Ghost}" Content="Annuler"/>
+            </Grid>
+          </Grid>
+        </Border>
+      </Border>
     </Grid>
   </Border>
 </Window>
@@ -409,7 +466,8 @@ try {
                    'VRun','RunTitle','RunSub','Pct','BarTrack','BarFill','Fx','StDone','StSpeed','StEta','CurFile','BtnCancelRun',
                    'VDone','CheckScale','DoneTitle','DoneSub','DoneVerifyBox','DoneVerify','BtnDone1','BtnDone2',
                    'VError','ErrTitle','ErrSub','BtnErr1','BtnErr2','VCode','CodeBox','BtnCode','Foot',
-                   'VDest','DestName','DestPath','DestFree','BtnDestChange','BtnDestGo','DestErr','BtnToRecv','BtnToSend','CodeErr') {
+                   'VDest','DestName','DestPath','DestFree','BtnDestChange','BtnDestGo','DestErr','BtnToRecv','BtnToSend','CodeErr',
+                   'Browse','BrowseTitle','BrowsePath','BrowseClose','BrowseUp','BrowseQuick','BrowseList','BrowseGo','BrowseCancel') {
         $ui[$n] = $win.FindName($n)
         if ($null -eq $ui[$n]) { throw "Élément d'interface manquant : $n" }
     }
@@ -1118,6 +1176,81 @@ function Reset-Flash {
     }
 }
 
+# ---------------------------------------------------------------- navigateur de dossiers (DA maison)
+$Browse = @{ Mode = 'send'; Cur = $null }
+$GeoFolder = [Windows.Media.Geometry]::Parse('M0,3 A2,2 0 0 1 2,1 L6,1 L8,3 L16,3 A2,2 0 0 1 18,5 L18,12 A2,2 0 0 1 16,14 L2,14 A2,2 0 0 1 0,12 Z')
+function Add-BrowseItem([string]$name, [string]$path, [string]$kind) {
+    $it = New-Object Windows.Controls.ListBoxItem
+    $sp = New-Object Windows.Controls.StackPanel; $sp.Orientation = 'Horizontal'
+    $p = New-Object Windows.Shapes.Path; $p.Width = 19; $p.Height = 15; $p.Stretch = 'Uniform'; $p.VerticalAlignment = 'Center'
+    if ($kind -eq 'up') { $p.Data = [Windows.Media.Geometry]::Parse('M9,3 L4,8 M9,3 L14,8 M9,3 L9,15'); $p.Stroke = New-Brush 255 150 150 150; $p.StrokeThickness = 1.6 }
+    elseif ($kind -eq 'drive') { $p.Data = [Windows.Media.Geometry]::Parse('M1,4 L17,4 L17,12 L1,12 Z'); $p.Stroke = New-Brush 255 225 29 46; $p.StrokeThickness = 1.4 }
+    else { $p.Data = $GeoFolder; $p.Fill = New-Brush 255 225 29 46 }
+    $tb = New-Object Windows.Controls.TextBlock; $tb.Text = $name; $tb.FontSize = 14; $tb.Margin = '13,0,0,0'; $tb.VerticalAlignment = 'Center'; $tb.TextTrimming = 'CharacterEllipsis'
+    [void]$sp.Children.Add($p); [void]$sp.Children.Add($tb)
+    $it.Content = $sp; $it.Tag = @{ P = $path; K = $kind }
+    [void]$ui.BrowseList.Items.Add($it)
+}
+function Fill-Browse([string]$dir) {
+    $ui.BrowseList.Items.Clear()
+    if ($dir -eq '::drives') {
+        $Browse.Cur = '::drives'; $ui.BrowsePath.Text = 'Ce PC'
+        foreach ($d in [IO.DriveInfo]::GetDrives()) {
+            if ($d.IsReady) {
+                $n = $d.Name.TrimEnd('\')
+                $lbl = if ($d.VolumeLabel) { $d.VolumeLabel + ' (' + $n + ')' } else { 'Disque (' + $n + ')' }
+                Add-BrowseItem $lbl $d.RootDirectory.FullName 'drive'
+            }
+        }
+        return
+    }
+    $Browse.Cur = $dir; $ui.BrowsePath.Text = $dir
+    $parent = [IO.Path]::GetDirectoryName($dir.TrimEnd('\'))
+    if ($parent) { Add-BrowseItem 'Dossier parent' $parent 'up' } else { Add-BrowseItem 'Ce PC' '::drives' 'up' }
+    try {
+        $subs = Get-ChildItem -LiteralPath $dir -Directory -Force -ErrorAction SilentlyContinue | Where-Object { -not ($_.Attributes -band [IO.FileAttributes]::System) -and -not ($_.Attributes -band [IO.FileAttributes]::Hidden) } | Sort-Object Name
+        foreach ($s in $subs) { Add-BrowseItem $s.Name $s.FullName 'dir' }
+    } catch {}
+    if ($ui.BrowseList.Items.Count) { $ui.BrowseList.ScrollIntoView($ui.BrowseList.Items[0]) }
+}
+function Enter-Browse($tag) { if ($tag) { Fill-Browse $tag.P } }
+function Open-Browse([string]$mode) {
+    $Browse.Mode = $mode
+    $ui.BrowseTitle.Text = if ($mode -eq 'send') { 'Choisis le dossier à envoyer' } else { 'Où enregistrer le dossier ?' }
+    $ui.BrowseGo.Content = if ($mode -eq 'send') { 'Envoyer ce dossier' } else { 'Enregistrer ici' }
+    $start = if ($mode -eq 'dest' -and $S.Dest -and (Test-Path -LiteralPath $S.Dest)) { $S.Dest } else { [Environment]::GetFolderPath('UserProfile') }
+    Fill-Browse $start
+    $ui.Browse.Visibility = 'Visible'
+    $fade = New-Object Windows.Media.Animation.DoubleAnimation(0.0, 1.0, (New-Object Windows.Duration ([TimeSpan]::FromMilliseconds(170))))
+    $ui.Browse.BeginAnimation([Windows.UIElement]::OpacityProperty, $fade)
+}
+function Close-Browse { $ui.Browse.Visibility = 'Collapsed' }
+function Confirm-Browse {
+    $sel = $ui.BrowseList.SelectedItem
+    $path = $null
+    if ($sel -and ($sel.Tag.K -eq 'dir' -or $sel.Tag.K -eq 'drive')) { $path = $sel.Tag.P }
+    elseif ($Browse.Cur -ne '::drives') { $path = $Browse.Cur }
+    if (-not $path) { return }
+    Close-Browse
+    if ($Browse.Mode -eq 'send') { Start-Send @($path) } else { $S.Dest = $path; Update-DestUi }
+}
+function Init-Browse {
+    $ui.BrowseQuick.Children.Clear()
+    $items = @(Get-KnownDirs) + @(@{ L = 'Ce PC'; P = '::drives' })
+    foreach ($q in $items) {
+        $b = New-Object Windows.Controls.Button
+        $b.Style = $win.FindResource('Ghost'); $b.Height = 34; $b.FontSize = 12.5; $b.Margin = '0,0,7,0'; $b.Padding = '12,0'
+        $b.Content = $q.L; $b.Tag = $q.P
+        $b.Add_Click({ param($s, $e) Fill-Browse ([string]$s.Tag) })
+        [void]$ui.BrowseQuick.Children.Add($b)
+    }
+    $ui.BrowseList.Add_MouseDoubleClick({ $sel = $ui.BrowseList.SelectedItem; if ($sel) { Enter-Browse $sel.Tag } })
+    $ui.BrowseUp.Add_Click({ if ($Browse.Cur -eq '::drives') { return }; $pp = [IO.Path]::GetDirectoryName($Browse.Cur.TrimEnd('\')); if ($pp) { Fill-Browse $pp } else { Fill-Browse '::drives' } })
+    $ui.BrowseGo.Add_Click({ Confirm-Browse })
+    $ui.BrowseCancel.Add_Click({ Close-Browse })
+    $ui.BrowseClose.Add_Click({ Close-Browse })
+}
+
 # ---------------------------------------------------------------- événements
 $ui.TitleBar.Add_MouseLeftButtonDown({ try { $win.DragMove() } catch {} })
 $ui.BtnMin.Add_Click({ $win.WindowState = 'Minimized' })
@@ -1142,12 +1275,7 @@ $onDrop = {
 foreach ($c in @($ui.Root, $ui.Drop)) { $c.Add_DragOver($onDragOver); $c.Add_DragEnter($onDragOver); $c.Add_DragLeave($onDragLeave); $c.Add_Drop($onDrop) }
 $ui.Drop.Add_MouseEnter({ if ($S.View -eq 'VIdle') { $ui.DropRect.Stroke = New-Brush 255 225 29 46 } })
 $ui.Drop.Add_MouseLeave({ & $onDragLeave })
-$ui.Drop.Add_MouseLeftButtonUp({
-    $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
-    $dlg.Description = 'Choisis le dossier à envoyer'
-    $dlg.ShowNewFolderButton = $false
-    if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { Start-Send @($dlg.SelectedPath) }
-})
+$ui.Drop.Add_MouseLeftButtonUp({ Open-Browse 'send' })
 
 $ui.BtnCopy.Add_Click({ if (Copy-Text $ui.MsgBox.Text) { Flash-Copied $ui.BtnCopy '✓  Message copié' } })
 $ui.BtnCopyCode.Add_Click({ if (Copy-Text $S.Code) { Flash-Copied $ui.BtnCopyCode '✓  Copié' } })
@@ -1188,13 +1316,7 @@ $ui.BtnToSend.Add_Click({
     if (-not $S.Croc -and -not $S.Bg.ContainsKey('croc')) { Start-Bg 'croc' $InstallCroc @($AppDir) }
     Reset-Send
 })
-$ui.BtnDestChange.Add_Click({
-    $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
-    $dlg.Description = 'Où enregistrer le dossier reçu ?'
-    $dlg.ShowNewFolderButton = $true
-    if ($S.Dest -and (Test-Path -LiteralPath $S.Dest)) { $dlg.SelectedPath = $S.Dest }
-    if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $S.Dest = $dlg.SelectedPath; Update-DestUi }
-})
+$ui.BtnDestChange.Add_Click({ Open-Browse 'dest' })
 $ui.BtnDestGo.Add_Click({ Confirm-Dest })
 $ui.CodeBox.Add_KeyDown({ if ($_.Key -eq 'Return') { Submit-Code } })
 
@@ -1240,7 +1362,7 @@ try {
     }
 } catch {}
 try { $bmp = Get-LogoBitmap; $win.Icon = $bmp } catch { $bmp = $null }
-$win.Title = if ($Mode -eq 'send') { 'Onde' } else { 'Onde - Réception' }
+$win.Title = ''
 $notes1 = @(@(660.0, 0.0, 0.09), @(990.0, 0.045, 0.11))
 $notes2 = @(@(784.0, 0.0, 0.5), @(1046.5, 0.12, 0.55), @(1318.5, 0.24, 0.7))
 Start-Bg 'snd1' $MakeSound @($notes1, 0.10)
@@ -1263,6 +1385,7 @@ if ($Mode -eq 'send') {
     }
     Start-Recv
 }
+Init-Browse
 $fxTimer.Start()
 $logicTimer.Start()
 $win.Add_ContentRendered({ $win.Activate() | Out-Null })
