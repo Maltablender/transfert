@@ -850,7 +850,9 @@ function Send-Finished {
 function Reset-Send {
     Stop-Croc
     Remove-Manifest
+    Clear-CancelFlag $S.Code
     $S.Code = ''; $S.TargetPct = 0; $S.ShownPct = 0; $S.RetryAt = $null
+    $S.Cancelling = $false
     Show-View 'VIdle'
 }
 
@@ -919,6 +921,18 @@ function Get-CodeHash([string]$c) {
     $sha = [Security.Cryptography.SHA256]::Create()
     return (-join ($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes('onde|' + $c)) | ForEach-Object { $_.ToString('x2') }))
 }
+$CancelDir = Join-Path $env:LOCALAPPDATA 'OndeShared'
+function Cancel-Flag([string]$c) { Join-Path $CancelDir ((Get-CodeHash $c).Substring(0, 20) + '.cancel') }
+function Signal-Cancel {
+    if (-not $S.Code) { return }
+    $S.Cancelling = $true
+    try {
+        if (-not (Test-Path -LiteralPath $CancelDir)) { New-Item -ItemType Directory -Force -Path $CancelDir | Out-Null }
+        Set-Content -LiteralPath (Cancel-Flag $S.Code) -Value '1' -Force -ErrorAction SilentlyContinue
+    } catch {}
+}
+function Test-Cancelled { if (-not $S.Code) { return $false } try { return (Test-Path -LiteralPath (Cancel-Flag $S.Code)) } catch { return $false } }
+function Clear-CancelFlag([string]$c) { if (-not $c) { return } try { Remove-Item -LiteralPath (Cancel-Flag $c) -Force -ErrorAction SilentlyContinue } catch {} }
 function Test-CodeUsed([string]$code) {
     try {
         $f = Join-Path $AppDir 'codes.dat'
@@ -963,6 +977,7 @@ function Clear-RecvTraces {
     if ($Mode -ne 'recv') { return }
     if ($S.Stage) { try { Remove-Item -LiteralPath $S.Stage -Recurse -Force -ErrorAction SilentlyContinue } catch {}; $S.Stage = $null }
     try { if ($env:TS_LAUNCHER -and (Test-Path -LiteralPath $env:TS_LAUNCHER)) { Remove-Item -LiteralPath $env:TS_LAUNCHER -Force -ErrorAction SilentlyContinue } } catch {}
+    try { Clear-CancelFlag $S.Code } catch {}
 }
 function Recv-Finished {
     $verify = ''; $ok = $true; $root = $null
@@ -1069,6 +1084,12 @@ function Update-Fx {
 # ---------------------------------------------------------------- boucle de contrôle (4 fois par seconde)
 function Update-Logic {
     if ($S.Flash.Count) { Reset-Flash }
+    if (-not $S.Cancelling -and $S.Code -and ($S.View -eq 'VPrep' -or $S.View -eq 'VWait' -or $S.View -eq 'VDest' -or $S.View -eq 'VRun') -and (Test-Cancelled)) {
+        $S.Cancelling = $true; $S.RetryAt = $null; $cc = $S.Code; Stop-Croc
+        if ($Mode -eq 'recv') { try { $win.Close() } catch {} } else { Reset-Send }
+        Clear-CancelFlag $cc
+        return
+    }
     if ($Mode -eq 'recv' -and $S.View -eq 'VPrep' -and $S.Running -and $S.StartTime -and -not $S.GotProgress -and ((Get-Date) - $S.StartTime).TotalSeconds -gt 7) {
         $ui.PrepTitle.Text = "En attente de l'expéditeur…"
         $ui.PrepSub.Text = "Le transfert démarre dès que l'expéditeur a Onde ouvert sur son PC. Destination : « $(Get-DestLabel) »."
@@ -1312,6 +1333,7 @@ $confirmStop = {
     $q = [Windows.MessageBox]::Show('Arrêter le transfert ?', 'Onde', 'YesNo', 'Question')
     if ("$q" -ne 'Yes') { return }
     $S.RetryAt = $null
+    Signal-Cancel
     if ($Mode -eq 'send') { Reset-Send } else { Stop-Croc; $win.Close() }
 }
 $ui.BtnCancelWait.Add_Click($confirmStop)
