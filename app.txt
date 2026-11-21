@@ -710,6 +710,7 @@ function Start-Croc([string]$arguments, [hashtable]$envVars) {
     foreach ($r in $S.Readers) { $r.Task = $r.SR.ReadAsync($r.Buf, 0, $r.Buf.Length) }
     $S.Running = $true
     $S.Done = 0.0; $S.CurName = $null; $S.CurMax = 0.0; $S.CurCounted = $false; $S.LastPct = 0; $S.GotProgress = $false
+    $S.PrepDone = 0.0; $S.PrepCur = $null; $S.PrepCurMax = 0.0; $S.PrepCounted = $false; $S.PrepLastPct = 0
     Set-Awake $true
 }
 function Stop-Croc {
@@ -754,9 +755,18 @@ function Read-Line([string]$l) {
         if ($Matches[6]) { $S.Speed = ConvertTo-Bytes $Matches[6] $Matches[7] }
         if ($name -match '(?i)hashing|hash\b|calcul') {
             if (-not $S.GotProgress -and $Mode -eq 'send' -and $S.View -eq 'VWait') {
+                if ($name -ne $S.PrepCur -or $pct -lt ($S.PrepLastPct - 5)) {
+                    if ($null -ne $S.PrepCur -and -not $S.PrepCounted) { $S.PrepDone += $S.PrepCurMax }
+                    $S.PrepCur = $name; $S.PrepCounted = $false
+                }
+                $S.PrepCurMax = $max; $S.PrepLastPct = $pct
+                if ($pct -ge 100 -and -not $S.PrepCounted) { $S.PrepDone += $max; $S.PrepCounted = $true }
+                $povr = $S.PrepDone + $(if ($S.PrepCounted) { 0 } else { $cur })
+                $ptot = if ($S.Size -gt 0) { [double]$S.Size } else { $max }
+                $pp = if ($ptot -gt 0) { [math]::Min(99.9, 100 * $povr / $ptot) } else { $pct }
                 $ui.PrepBarBox.Visibility = 'Visible'
-                $ui.PrepBarLbl.Text = if ($max -gt 0) { "Préparation du dossier… $pct %  (" + (Format-Size $cur) + ' / ' + (Format-Size $max) + ')' } else { "Préparation du dossier… $pct %" }
-                $ui.PrepBarFill.Width = [math]::Max(0, [math]::Min(400, 400 * $pct / 100))
+                $ui.PrepBarLbl.Text = ('Préparation du dossier… {0:N0} %  (' -f [math]::Floor($pp)) + (Format-Size ([math]::Min($povr, $ptot))) + ' / ' + (Format-Size $ptot) + ')'
+                $ui.PrepBarFill.Width = [math]::Max(0, [math]::Min(400, 400 * $pp / 100))
             } elseif ($S.GotProgress -and $S.View -eq 'VRun') {
                 $ui.CurFile.Text = 'Vérification des fichiers…'; if ($S.Speed -gt 0) { $ui.StSpeed.Text = (Format-Size $S.Speed) + '/s' }
             }
