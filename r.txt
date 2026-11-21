@@ -1,0 +1,114 @@
+# ================================================================
+#  TRANSFERT SECURISE - RECEPTION
+#  Lancé depuis https://maltablender.github.io/transfert/
+#  Chiffré de bout en bout. Reprise automatique si la connexion coupe.
+# ================================================================
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+$Host.UI.RawUI.WindowTitle = 'Transfert sécurisé - Réception'
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$ProgressPreference = 'SilentlyContinue'
+$AppDir = Join-Path $env:LOCALAPPDATA 'TransfertSecurise'
+New-Item -ItemType Directory -Force -Path $AppDir | Out-Null
+
+function Get-Croc {
+    $exe = Join-Path $AppDir 'croc.exe'
+    if (Test-Path -LiteralPath $exe) { return $exe }
+    Write-Host 'Première utilisation : installation du moteur de transfert...' -ForegroundColor Cyan
+    $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'Windows-ARM64' } else { 'Windows-64bit' }
+    $rel = Invoke-RestMethod 'https://api.github.com/repos/schollz/croc/releases/latest' -Headers @{ 'User-Agent' = 'TransfertSecurise' }
+    $asset = $rel.assets | Where-Object { $_.name -like "*_$arch.zip" } | Select-Object -First 1
+    if (-not $asset) { throw "Impossible de trouver croc pour $arch." }
+    $zip = Join-Path $AppDir $asset.name
+    Invoke-WebRequest $asset.browser_download_url -OutFile $zip -UseBasicParsing
+    $sums = $rel.assets | Where-Object { $_.name -like '*checksums.txt' } | Select-Object -First 1
+    if ($sums) {
+        $txt = (Invoke-WebRequest $sums.browser_download_url -UseBasicParsing).Content
+        if ($txt -is [byte[]]) { $txt = [Text.Encoding]::UTF8.GetString($txt) }
+        $line = ($txt -split "`n") | Where-Object { $_ -match [regex]::Escape($asset.name) } | Select-Object -First 1
+        if ($line) {
+            $expected = ($line.Trim() -split '\s+')[0].ToLower()
+            $actual = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLower()
+            if ($expected -ne $actual) { Remove-Item -LiteralPath $zip -Force; throw 'Fichier téléchargé corrompu (empreinte SHA-256 invalide).' }
+        }
+    }
+    $tmp = Join-Path $AppDir 'extract'
+    Expand-Archive -LiteralPath $zip -DestinationPath $tmp -Force
+    $found = Get-ChildItem -LiteralPath $tmp -Recurse -Filter 'croc.exe' | Select-Object -First 1
+    Move-Item -LiteralPath $found.FullName -Destination $exe -Force
+    Remove-Item -LiteralPath $zip, $tmp -Recurse -Force
+    Write-Host 'Installé.' -ForegroundColor Green
+    return $exe
+}
+
+try {
+    $croc = Get-Croc
+
+    # ---------- 1. Code ----------
+    Write-Host ''
+    do {
+        $code = (Read-Host "Colle le code d'accès reçu").Trim()
+        $code = $code -replace '^(?i)code d.acc[eè]s\s*:\s*', ''
+    } while (-not $code)
+
+    # ---------- 2. Destination ----------
+    Add-Type -AssemblyName System.Windows.Forms
+    $owner = New-Object System.Windows.Forms.Form -Property @{ TopMost = $true }
+    $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dlg.Description = 'Où enregistrer le dossier reçu ?'
+    $dlg.ShowNewFolderButton = $true
+    $dlg.SelectedPath = Join-Path $env:USERPROFILE 'Downloads'
+    if ($dlg.ShowDialog($owner) -ne [System.Windows.Forms.DialogResult]::OK) { exit }
+    $dest = $dlg.SelectedPath
+    $drive = (Get-Item -LiteralPath $dest).PSDrive
+    if ($drive -and $drive.Free) { Write-Host ("Espace libre sur {0}: : {1:N1} Go" -f $drive.Name, ($drive.Free / 1GB)) -ForegroundColor DarkGray }
+
+    # ---------- 3. Réception ----------
+    Add-Type -Namespace TS -Name Power -MemberDefinition '[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint f);'
+    [void][TS.Power]::SetThreadExecutionState([uint32]2147483649)  # empêche la mise en veille
+
+    Write-Host ''
+    Write-Host 'Connexion et téléchargement... Laisse cette fenêtre ouverte.' -ForegroundColor Cyan
+    Write-Host '(Si Windows demande une autorisation réseau, clique « Autoriser ».)' -ForegroundColor DarkGray
+    $env:CROC_SECRET = $code
+    $ok = $false
+    while ($true) {
+        & $croc --yes --overwrite --out $dest
+        if ($LASTEXITCODE -eq 0) { $ok = $true; break }
+        Write-Host ''
+        $r = Read-Host 'Transfert interrompu. Réessayer (reprend où il en était) ? [O/n]'
+        if ($r -match '^[nN]') { break }
+    }
+    Remove-Item Env:\CROC_SECRET -ErrorAction SilentlyContinue
+    [void][TS.Power]::SetThreadExecutionState([uint32]2147483648)
+
+    # ---------- 4. Restauration des attributs (cachés / système / lecture seule) ----------
+    if ($ok) {
+        Get-ChildItem -LiteralPath $dest -Filter '*.tsattr' -File -Force | ForEach-Object {
+            foreach ($line in [IO.File]::ReadAllLines($_.FullName, [Text.Encoding]::UTF8)) {
+                $parts = $line -split "`t", 2
+                if ($parts.Count -ne 2 -or $parts[1] -match '(^|\\)\.\.(\\|$)' -or [IO.Path]::IsPathRooted($parts[1])) { continue }
+                $p = Join-Path $dest $parts[1]
+                if (-not (Test-Path -LiteralPath $p)) { continue }
+                try {
+                    $item = Get-Item -LiteralPath $p -Force
+                    $a = $item.Attributes
+                    if ($parts[0] -match 'H') { $a = $a -bor [IO.FileAttributes]::Hidden }
+                    if ($parts[0] -match 'S') { $a = $a -bor [IO.FileAttributes]::System }
+                    if ($parts[0] -match 'R') { $a = $a -bor [IO.FileAttributes]::ReadOnly }
+                    $item.Attributes = $a
+                } catch {}
+            }
+            Remove-Item -LiteralPath $_.FullName -Force
+        }
+        Write-Host ''
+        Write-Host "TERMINÉ. Dossier reçu dans : $dest" -ForegroundColor Green
+        Start-Process explorer.exe $dest
+    }
+}
+catch {
+    Write-Host ''
+    Write-Host "ERREUR : $($_.Exception.Message)" -ForegroundColor Red
+}
+Write-Host ''
+Read-Host 'Appuie sur Entrée pour fermer'

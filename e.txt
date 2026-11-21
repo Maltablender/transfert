@@ -1,0 +1,177 @@
+# ================================================================
+#  TRANSFERT SECURISE - ENVOI
+#  Lancé par « Envoyer un dossier.bat » (double-clic ou glisser un dossier dessus).
+#  Chiffrement de bout en bout (PAKE + AES-256), sans limite de taille,
+#  reprise automatique si la connexion coupe. Moteur : croc (open source).
+# ================================================================
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+$Host.UI.RawUI.WindowTitle = 'Transfert sécurisé - Envoi'
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$ProgressPreference = 'SilentlyContinue'
+$AppDir = Join-Path $env:LOCALAPPDATA 'TransfertSecurise'
+New-Item -ItemType Directory -Force -Path $AppDir | Out-Null
+
+function Get-Croc {
+    $exe = Join-Path $AppDir 'croc.exe'
+    if (Test-Path -LiteralPath $exe) { return $exe }
+    Write-Host 'Première utilisation : installation du moteur de transfert...' -ForegroundColor Cyan
+    $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'Windows-ARM64' } else { 'Windows-64bit' }
+    $rel = Invoke-RestMethod 'https://api.github.com/repos/schollz/croc/releases/latest' -Headers @{ 'User-Agent' = 'TransfertSecurise' }
+    $asset = $rel.assets | Where-Object { $_.name -like "*_$arch.zip" } | Select-Object -First 1
+    if (-not $asset) { throw "Impossible de trouver croc pour $arch." }
+    $zip = Join-Path $AppDir $asset.name
+    Invoke-WebRequest $asset.browser_download_url -OutFile $zip -UseBasicParsing
+    # Vérification d'intégrité (SHA-256 publié par l'auteur)
+    $sums = $rel.assets | Where-Object { $_.name -like '*checksums.txt' } | Select-Object -First 1
+    if ($sums) {
+        $txt = (Invoke-WebRequest $sums.browser_download_url -UseBasicParsing).Content
+        if ($txt -is [byte[]]) { $txt = [Text.Encoding]::UTF8.GetString($txt) }
+        $line = ($txt -split "`n") | Where-Object { $_ -match [regex]::Escape($asset.name) } | Select-Object -First 1
+        if ($line) {
+            $expected = ($line.Trim() -split '\s+')[0].ToLower()
+            $actual = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLower()
+            if ($expected -ne $actual) { Remove-Item -LiteralPath $zip -Force; throw 'Fichier téléchargé corrompu (empreinte SHA-256 invalide).' }
+        }
+    }
+    $tmp = Join-Path $AppDir 'extract'
+    Expand-Archive -LiteralPath $zip -DestinationPath $tmp -Force
+    $found = Get-ChildItem -LiteralPath $tmp -Recurse -Filter 'croc.exe' | Select-Object -First 1
+    Move-Item -LiteralPath $found.FullName -Destination $exe -Force
+    Remove-Item -LiteralPath $zip, $tmp -Recurse -Force
+    Write-Host 'Installé.' -ForegroundColor Green
+    return $exe
+}
+
+function Format-Size([double]$b) {
+    if ($b -ge 1TB) { return '{0:N2} To' -f ($b / 1TB) }
+    if ($b -ge 1GB) { return '{0:N2} Go' -f ($b / 1GB) }
+    if ($b -ge 1MB) { return '{0:N1} Mo' -f ($b / 1MB) }
+    return '{0:N0} Ko' -f ($b / 1KB)
+}
+
+function New-Code {
+    $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+    $alpha = 'abcdefghjkmnpqrstuvwxyz23456789'
+    $part = {
+        param($n, $chars)
+        $bytes = New-Object byte[] $n
+        $rng.GetBytes($bytes)
+        -join ($bytes | ForEach-Object { $chars[$_ % $chars.Length] })
+    }
+    return '{0}-{1}-{2}-{3}' -f (& $part 4 '0123456789'), (& $part 5 $alpha), (& $part 5 $alpha), (& $part 5 $alpha)
+}
+
+try {
+    # ---------- 1. Choix du dossier ----------
+    $src = $env:TS_ARG
+    if (-not $src -or -not (Test-Path -LiteralPath $src -PathType Container)) {
+        Add-Type -AssemblyName System.Windows.Forms
+        $owner = New-Object System.Windows.Forms.Form -Property @{ TopMost = $true }
+        $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+        $dlg.Description = 'Choisis le dossier à envoyer'
+        $dlg.ShowNewFolderButton = $false
+        if ($dlg.ShowDialog($owner) -ne [System.Windows.Forms.DialogResult]::OK) { exit }
+        $src = $dlg.SelectedPath
+    }
+    $src = (Resolve-Path -LiteralPath $src).ProviderPath.TrimEnd('\')
+    $name = Split-Path $src -Leaf
+    $parent = Split-Path $src -Parent
+    Write-Host ''
+    Write-Host "Dossier : $src" -ForegroundColor Cyan
+
+    # ---------- 2. Inventaire complet (fichiers cachés et système compris) ----------
+    Write-Host 'Analyse du contenu (cachés compris)...'
+    $size = 0L; $nFiles = 0; $nDirs = 0
+    $manifest = New-Object System.Collections.Generic.List[string]
+    $scanErr = @()
+    $rootItem = Get-Item -LiteralPath $src -Force
+    $all = @($rootItem) + @(Get-ChildItem -LiteralPath $src -Recurse -Force -ErrorAction SilentlyContinue -ErrorVariable +scanErr)
+    foreach ($it in $all) {
+        if ($it.PSIsContainer) { $nDirs++ } else { $nFiles++; $size += $it.Length }
+        $flags = @()
+        if ($it.Attributes -band [IO.FileAttributes]::Hidden)   { $flags += 'H' }
+        if ($it.Attributes -band [IO.FileAttributes]::System)   { $flags += 'S' }
+        if (-not $it.PSIsContainer -and ($it.Attributes -band [IO.FileAttributes]::ReadOnly)) { $flags += 'R' }
+        if ($flags.Count) {
+            $rel = $it.FullName.Substring($parent.TrimEnd('\').Length).TrimStart('\')
+            $manifest.Add(($flags -join '') + "`t" + $rel)
+        }
+    }
+    $nDirs--  # sans compter le dossier racine
+    Write-Host ("{0} fichiers, {1} sous-dossiers, {2} au total ({3} éléments cachés/système)" -f $nFiles, $nDirs, (Format-Size $size), $manifest.Count) -ForegroundColor Green
+    if ($scanErr.Count) {
+        Write-Host "ATTENTION : $($scanErr.Count) élément(s) illisible(s) (accès refusé ou fichier verrouillé) :" -ForegroundColor Yellow
+        $scanErr | Select-Object -First 10 | ForEach-Object { Write-Host "  - $($_.TargetObject)" -ForegroundColor Yellow }
+        $r = Read-Host 'Continuer quand même ? [O/n]'
+        if ($r -match '^[nN]') { exit }
+    }
+
+    # Fichier des attributs (pour que les éléments cachés restent cachés chez le client)
+    $paths = @($src)
+    $attrFile = $null
+    if ($manifest.Count) {
+        $tmpDir = Join-Path $AppDir ('envoi_' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+        New-Item -ItemType Directory -Force -Path $tmpDir | Out-Null
+        $attrFile = Join-Path $tmpDir ($name + '.tsattr')
+        [IO.File]::WriteAllLines($attrFile, $manifest, (New-Object Text.UTF8Encoding $false))
+        $paths += $attrFile
+    }
+
+    # ---------- 3. Moteur + code ----------
+    $croc = Get-Croc
+    $code = New-Code
+
+    $link = 'https://maltablender.github.io/transfert/'
+
+    $msg1 = @"
+Bonjour,
+
+Je t'envoie le dossier « $name » ($(Format-Size $size)).
+
+Pour le recevoir, ouvre ce lien et suis les étapes (1 minute) :
+$link
+
+Je t'envoie le code d'accès dans un message séparé.
+Le transfert est chiffré de bout en bout : sans le code, personne ne peut lire le dossier.
+"@
+    $msg2 = "Code d'accès : $code"
+
+    Write-Host ''
+    Write-Host '================================================================' -ForegroundColor DarkGray
+    Write-Host $msg1
+    Write-Host '----------------------------------------------------------------' -ForegroundColor DarkGray
+    Write-Host '  CODE D''ACCÈS : ' -NoNewline; Write-Host $code -ForegroundColor Yellow
+    Write-Host '================================================================' -ForegroundColor DarkGray
+    Write-Host 'Conseil : envoie le message (lien) par mail et le code par SMS/WhatsApp.' -ForegroundColor DarkGray
+    try { Set-Clipboard -Value $msg1; Write-Host 'Message 1 (lien) copié dans le presse-papiers.' -ForegroundColor Green } catch {}
+    Read-Host 'Appuie sur Entrée pour copier le CODE dans le presse-papiers'
+    try { Set-Clipboard -Value $msg2; Write-Host 'Code copié.' -ForegroundColor Green } catch {}
+
+    # ---------- 4. Envoi ----------
+    Add-Type -Namespace TS -Name Power -MemberDefinition '[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint f);'
+    [void][TS.Power]::SetThreadExecutionState([uint32]2147483649)  # empêche la mise en veille
+
+    Write-Host ''
+    Write-Host 'En attente du client... Laisse cette fenêtre ouverte et le PC allumé.' -ForegroundColor Cyan
+    Write-Host '(Si Windows demande une autorisation réseau, clique « Autoriser ».)' -ForegroundColor DarkGray
+    while ($true) {
+        & $croc --no-compress send --code $code @paths
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host ''
+            Write-Host 'TRANSFERT TERMINÉ. Le client a reçu tout le dossier.' -ForegroundColor Green
+            break
+        }
+        Write-Host ''
+        $r = Read-Host 'Transfert interrompu. Relancer avec le même code (le client reprendra où il en était) ? [O/n]'
+        if ($r -match '^[nN]') { break }
+    }
+    [void][TS.Power]::SetThreadExecutionState([uint32]2147483648)
+    if ($attrFile) { Remove-Item -LiteralPath (Split-Path $attrFile -Parent) -Recurse -Force -ErrorAction SilentlyContinue }
+}
+catch {
+    Write-Host ''
+    Write-Host "ERREUR : $($_.Exception.Message)" -ForegroundColor Red
+}
+Write-Host ''
+Read-Host 'Appuie sur Entrée pour fermer'
