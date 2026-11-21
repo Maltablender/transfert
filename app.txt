@@ -8,7 +8,7 @@ $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $ProgressPreference = 'SilentlyContinue'
 $Site = 'https://maltablender.github.io/transfert/'
-if ($Mode -eq 'recv') { $AppDir = Join-Path $env:TEMP ('Onde-' + [guid]::NewGuid().ToString('N').Substring(0, 8)) }
+if ($Mode -eq 'recv') { $AppDir = Join-Path $env:LOCALAPPDATA 'Onde' }
 else { $AppDir = Join-Path $env:LOCALAPPDATA 'TransfertSecurise' }
 New-Item -ItemType Directory -Force -Path $AppDir | Out-Null
 
@@ -972,12 +972,6 @@ function Start-SelfTest {
 function Clear-RecvTraces {
     if ($Mode -ne 'recv') { return }
     if ($S.Stage) { try { Remove-Item -LiteralPath $S.Stage -Recurse -Force -ErrorAction SilentlyContinue } catch {}; $S.Stage = $null }
-    if (-not $AppDir) { return }
-    try {
-        $psi = New-Object Diagnostics.ProcessStartInfo 'cmd.exe', ('/c ping 127.0.0.1 -n 3 >nul & rd /s /q "' + $AppDir + '"')
-        $psi.WindowStyle = 'Hidden'; $psi.CreateNoWindow = $true
-        [Diagnostics.Process]::Start($psi) | Out-Null
-    } catch {}
 }
 function Recv-Finished {
     $verify = ''; $ok = $true; $root = $null
