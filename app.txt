@@ -957,7 +957,7 @@ function Start-Recv {
 function Start-RecvCroc {
     if (-not $S.Stage) { $S.Stage = Join-Path $S.Dest ('.onde-' + (Get-CodeHash $S.Code).Substring(0, 10)) }
     try { New-Item -ItemType Directory -Force -Path $S.Stage | Out-Null; (Get-Item -LiteralPath $S.Stage -Force).Attributes = ([IO.FileAttributes]::Directory -bor [IO.FileAttributes]::Hidden) } catch {}
-    if (-not $S.GotProgress -and $S.View -ne 'VRun' -and $S.Retries -eq 0) { Show-Prep 'Connexion sécurisée…' "Le dossier sera enregistré dans « $(Get-DestLabel) »." }
+    if (-not $S.GotProgress -and $S.View -ne 'VRun' -and $S.Retries -eq 0) { Show-Prep 'Connexion sécurisée…' "Code : $($S.Code) · enregistrement dans « $(Get-DestLabel) »." }
     if (-not $S.StartTime -or $S.Retries -eq 0) { $S.StartTime = Get-Date }
     Start-Croc ('--yes --overwrite --out "' + $S.Stage + '"') @{ CROC_SECRET = $S.Code }
 }
@@ -1092,7 +1092,7 @@ function Update-Logic {
     }
     if ($Mode -eq 'recv' -and $S.View -eq 'VPrep' -and $S.Running -and $S.StartTime -and -not $S.GotProgress -and ((Get-Date) - $S.StartTime).TotalSeconds -gt 7) {
         $ui.PrepTitle.Text = "En attente de l'expéditeur…"
-        $ui.PrepSub.Text = "Le transfert démarre dès que l'expéditeur a Onde ouvert sur son PC. Destination : « $(Get-DestLabel) »."
+        $ui.PrepSub.Text = "Le transfert démarre tout seul dès que l'expéditeur a Onde ouvert avec LE MÊME CODE : $($S.Code). Destination : « $(Get-DestLabel) »."
     }
     if ($S.Bg.ContainsKey('croc')) {
         $r = Receive-Bg 'croc'
