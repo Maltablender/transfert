@@ -295,7 +295,8 @@ h1{margin:0;max-width:16ch;font-weight:700;font-size:clamp(44px,7.2vw,96px);line
   const size = Number(parts[2]) || 0;
   if (size > 0) $('meta').textContent = fmt(size); else $('metali').remove();
   const safe = (folder || 'Dossier').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 80).replace(/[. ]+$/, '') || 'Dossier';
-  const file = safe + '.bat';
+  const codeTag = (parts[0] || '').split('-')[0];
+  const file = safe + (codeTag ? ' - ' + codeTag : '') + '.bat';
   $('g1file').textContent = file;
   if (!isWin) $('notwin').classList.add('show');
 
