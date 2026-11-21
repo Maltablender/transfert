@@ -268,7 +268,7 @@ $Xaml = @'
             <Grid>
               <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
               <StackPanel VerticalAlignment="Center">
-                <TextBlock Text="Code du dossier · usage unique" FontSize="12" Foreground="#7A7A80"/>
+                <TextBlock Text="Ton code client · reste le même à chaque envoi" FontSize="12" Foreground="#7A7A80"/>
                 <TextBlock x:Name="CodeText" FontFamily="Cascadia Mono, Consolas" FontSize="24" FontWeight="SemiBold" Foreground="#F2F2F2" Margin="0,4,0,0"/>
               </StackPanel>
               <Button x:Name="BtnCopyCode" Grid.Column="1" Style="{StaticResource Ghost}" Height="40" Width="140" FontSize="13" Content="Copier le code" VerticalAlignment="Center"/>
@@ -780,6 +780,21 @@ function New-Code {
     $mk = { param($n, $chars) $b = New-Object byte[] $n; $rng.GetBytes($b); -join ($b | ForEach-Object { $chars[$_ % $chars.Length] }) }
     return ('{0}-{1}-{2}-{3}' -f (& $mk 4 '0123456789'), (& $mk 5 $alpha), (& $mk 5 $alpha), (& $mk 5 $alpha))
 }
+function Get-ClientCode {
+    $f = Join-Path $AppDir 'clientlink.dat'
+    try {
+        if (Test-Path -LiteralPath $f) {
+            $c = ([IO.File]::ReadAllText($f)).Trim()
+            if ($c -match '^\d{4}(-[a-z0-9]{5}){3}$') { return $c }
+        }
+    } catch {}
+    $c = New-Code
+    try {
+        if (-not (Test-Path -LiteralPath $AppDir)) { New-Item -ItemType Directory -Force -Path $AppDir | Out-Null }
+        [IO.File]::WriteAllText($f, $c)
+    } catch {}
+    return $c
+}
 function Start-Send([string[]]$paths) {
     $paths = @($paths | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | ForEach-Object { (Resolve-Path -LiteralPath $_).ProviderPath.TrimEnd('\') })
     if ($paths.Count -eq 0) { return }
@@ -801,13 +816,13 @@ function Start-SendCroc {
 function Send-Ready {
     $sc = $S.Scan
     $S.Size = [int64]$sc.Size; $S.Files = [int]$sc.Files
-    $S.Code = New-Code
+    $S.Code = Get-ClientCode
     $dir = Join-Path $AppDir ('envoi_' + $S.Code.Substring(0, 4) + '_' + [guid]::NewGuid().ToString('N').Substring(0, 6))
     New-Item -ItemType Directory -Force -Path $dir | Out-Null
     $S.Manifest = Join-Path $dir ('sillage-' + $S.Code.Substring(0, 4) + '.sillage')
     [IO.File]::WriteAllLines($S.Manifest, [string[]]$sc.Lines, (New-Object Text.UTF8Encoding $false))
     $link = $Site + 'dl.html#' + $S.Code + '/' + [uri]::EscapeDataString($S.Name) + '/' + $S.Size
-    $msg = "Bonjour,`r`n`r`nVoici « $($S.Name) » ($(Format-Size $S.Size)), envoyé avec Onde, chiffré de bout en bout.`r`n`r`nClique sur ce lien pour le recevoir :`r`n$link`r`n`r`nCode (si Onde te le demande) : $($S.Code)`r`nLien à usage unique : il ne fonctionne plus une fois le dossier reçu."
+    $msg = "Bonjour,`r`n`r`nVoici « $($S.Name) » ($(Format-Size $S.Size)), envoyé avec Onde, chiffré de bout en bout.`r`n`r`nClique sur ce lien pour le recevoir :`r`n$link`r`n`r`nCode (si Onde te le demande) : $($S.Code)`r`nGarde ce lien : c'est ton lien privé, il marche pour tous mes prochains envois."
     $ui.MsgBox.Text = $msg
     $ui.CodeText.Text = $S.Code
     $ui.BtnCopy.IsEnabled = $true; $ui.BtnCopyCode.IsEnabled = $true; $ui.BtnSelfTest.IsEnabled = $true
