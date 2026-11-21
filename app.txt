@@ -767,6 +767,8 @@ function Read-Line([string]$l) {
                 $ui.PrepBarBox.Visibility = 'Visible'
                 $ui.PrepBarLbl.Text = ('Préparation du dossier… {0:N0} %  (' -f [math]::Floor($pp)) + (Format-Size ([math]::Min($povr, $ptot))) + ' / ' + (Format-Size $ptot) + ')'
                 $ui.PrepBarFill.Width = [math]::Max(0, [math]::Min(400, 400 * $pp / 100))
+                if ($pp -ge 97) { $ui.WaitState.Text = 'Prêt · ton client peut recevoir maintenant'; try { $ui.WaitDot.Fill = New-Brush 255 52 211 153 } catch {} }
+                else { $ui.WaitState.Text = 'Préparation du dossier en cours…'; try { $ui.WaitDot.Fill = New-Brush 255 251 191 36 } catch {} }
             } elseif ($S.GotProgress -and $S.View -eq 'VRun') {
                 $ui.CurFile.Text = 'Vérification des fichiers…'; if ($S.Speed -gt 0) { $ui.StSpeed.Text = (Format-Size $S.Speed) + '/s' }
             }
