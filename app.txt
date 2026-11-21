@@ -1,9 +1,8 @@
 $Mode = if ("$env:TS_MODE" -eq 'recv') { 'recv' } else { 'send' }
 # ================================================================
-#  TRANSFERT SECURISE - application (envoi / réception)
+#  SILLAGE - transfert de dossiers chiffré de bout en bout
 #  https://maltablender.github.io/transfert/
-#  Chiffrement de bout en bout (PAKE + AES-256) via croc (open source).
-#  Sans limite de taille, reprise automatique si la connexion coupe.
+#  Moteur : croc (open source, PAKE + AES-256). Sans limite de taille.
 # ================================================================
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -12,25 +11,356 @@ $Site = 'https://maltablender.github.io/transfert/'
 $AppDir = Join-Path $env:LOCALAPPDATA 'TransfertSecurise'
 New-Item -ItemType Directory -Force -Path $AppDir | Out-Null
 
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
 try {
-    Add-Type -Namespace TSApp -Name Native -MemberDefinition @'
+    Add-Type -Namespace SillageNative -Name W -MemberDefinition @'
 [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();
 [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int n);
 [DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint f);
 '@
 } catch {}
-try { [void][TSApp.Native]::ShowWindow([TSApp.Native]::GetConsoleWindow(), 0) } catch {}
-[Windows.Forms.Application]::EnableVisualStyles()
+try { [void][SillageNative.W]::ShowWindow([SillageNative.W]::GetConsoleWindow(), 0) } catch {}
+
+# ---------------------------------------------------------------- interface (XAML)
+$Xaml = @'
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Sillage" Width="560" Height="690" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent" ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI Variable Display, Segoe UI" Foreground="#F4F6FA" UseLayoutRounding="True">
+  <Window.Resources>
+    <LinearGradientBrush x:Key="Accent" StartPoint="0,0" EndPoint="1,0">
+      <GradientStop Color="#7C5CFF" Offset="0"/>
+      <GradientStop Color="#22D3EE" Offset="1"/>
+    </LinearGradientBrush>
+    <Style x:Key="Primary" TargetType="Button">
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Height" Value="50"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="bd" CornerRadius="14" Background="{StaticResource Accent}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Opacity" Value="0.88"/></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="bd" Property="Opacity" Value="0.72"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="Ghost" TargetType="Button">
+      <Setter Property="Foreground" Value="#DDE2EC"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Height" Value="50"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="bd" CornerRadius="14" Background="#1A1E27" BorderBrush="#2C3240" BorderThickness="1">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#222734"/></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="bd" Property="Background" Value="#2A3040"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="TitleBtn" TargetType="Button">
+      <Setter Property="Width" Value="34"/>
+      <Setter Property="Height" Value="34"/>
+      <Setter Property="Foreground" Value="#8E96A8"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="bd" CornerRadius="10" Background="Transparent">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#1F2430"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="H1" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="27"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="#F4F6FA"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style x:Key="Sub" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="14.5"/>
+      <Setter Property="Foreground" Value="#8E96A8"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="LineHeight" Value="21"/>
+      <Setter Property="Margin" Value="0,8,0,0"/>
+    </Style>
+    <Style x:Key="StatLabel" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Foreground" Value="#6F778A"/>
+    </Style>
+    <Style x:Key="StatValue" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="16"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="#F4F6FA"/>
+      <Setter Property="Margin" Value="0,3,0,0"/>
+    </Style>
+  </Window.Resources>
+
+  <Border x:Name="Root" Margin="18" CornerRadius="24" BorderBrush="#232836" BorderThickness="1" AllowDrop="True">
+    <Border.Background>
+      <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#13161D" Offset="0"/>
+        <GradientStop Color="#0D0F14" Offset="1"/>
+      </LinearGradientBrush>
+    </Border.Background>
+    <Border.Effect>
+      <DropShadowEffect BlurRadius="28" ShadowDepth="6" Opacity="0.55" Color="#000000"/>
+    </Border.Effect>
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="64"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="52"/>
+      </Grid.RowDefinitions>
+
+      <!-- glow décoratif -->
+      <Ellipse Grid.RowSpan="3" Width="420" Height="300" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-160,-160,0" IsHitTestVisible="False" Opacity="0.22">
+        <Ellipse.Fill>
+          <RadialGradientBrush>
+            <GradientStop Color="#7C5CFF" Offset="0"/>
+            <GradientStop Color="#007C5CFF" Offset="1"/>
+          </RadialGradientBrush>
+        </Ellipse.Fill>
+      </Ellipse>
+
+      <!-- barre de titre -->
+      <Grid x:Name="TitleBar" Background="Transparent" Margin="22,0,14,0">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <Viewbox Width="30" Height="30">
+            <Canvas Width="32" Height="32">
+              <Rectangle Width="32" Height="32" RadiusX="9" RadiusY="9" Fill="{StaticResource Accent}"/>
+              <Path Data="M8,21 C12,21 14,11 22,11" Stroke="White" StrokeThickness="2.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+              <Path Data="M18.5,7.5 L22.5,11 L18.5,14.5" Stroke="White" StrokeThickness="2.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+              <Ellipse Canvas.Left="6.2" Canvas.Top="19.5" Width="3" Height="3" Fill="White" Opacity="0.7"/>
+            </Canvas>
+          </Viewbox>
+          <TextBlock Text="Sillage" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,1"/>
+          <Border Background="#1A1E27" CornerRadius="8" Padding="8,3" Margin="12,0,0,0" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal">
+              <Ellipse Width="6" Height="6" Fill="#34D399" VerticalAlignment="Center"/>
+              <TextBlock Text="Chiffré de bout en bout" FontSize="11.5" Foreground="#9AA3B5" Margin="6,0,0,0"/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+          <Button x:Name="BtnMin" Style="{StaticResource TitleBtn}">
+            <Path Data="M0,0 L10,0" Stroke="#8E96A8" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+          </Button>
+          <Button x:Name="BtnClose" Style="{StaticResource TitleBtn}" Margin="4,0,0,0">
+            <Path Data="M0,0 L9,9 M9,0 L0,9" Stroke="#8E96A8" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+          </Button>
+        </StackPanel>
+      </Grid>
+
+      <!-- vues -->
+      <Grid Grid.Row="1" Margin="28,10,28,0">
+
+        <!-- IDLE (envoi) -->
+        <StackPanel x:Name="VIdle" Visibility="Collapsed">
+          <TextBlock Style="{StaticResource H1}" Text="Envoyer un dossier"/>
+          <TextBlock Style="{StaticResource Sub}" Text="Glisse-le ci-dessous. Le message pour ton client est copié automatiquement."/>
+          <Grid x:Name="Drop" Height="300" Margin="0,24,0,0" Cursor="Hand" Background="Transparent" AllowDrop="True">
+            <Rectangle x:Name="DropRect" RadiusX="20" RadiusY="20" Stroke="#343B4C" StrokeThickness="1.6" StrokeDashArray="5 4" Fill="#11141B"/>
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+              <Grid Width="76" Height="76" HorizontalAlignment="Center">
+                <Grid.RenderTransform><TranslateTransform x:Name="DropFloat" Y="0"/></Grid.RenderTransform>
+                <Ellipse Fill="#1A1E2A"/>
+                <Ellipse Margin="10" Fill="{StaticResource Accent}" Opacity="0.95"/>
+                <Path Data="M0,8 L8,0 L16,8 M8,0 L8,18" Stroke="White" StrokeThickness="2.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Grid>
+              <TextBlock Text="Glisse ton dossier ici" FontSize="19" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,20,0,0"/>
+              <TextBlock Text="ou clique pour le choisir" FontSize="14" Foreground="#8E96A8" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+              <TextBlock Text="Dossiers, fichiers, vidéos, logiciels, sites… tout est envoyé tel quel" FontSize="12" Foreground="#5F6778" HorizontalAlignment="Center" Margin="0,22,0,0"/>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+
+        <!-- PREPARATION / CONNEXION -->
+        <StackPanel x:Name="VPrep" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,0,0,60">
+          <Grid Width="64" Height="64" HorizontalAlignment="Center">
+            <Ellipse Stroke="#1F2430" StrokeThickness="5"/>
+            <Path Data="M32,2.5 A29.5,29.5 0 0 1 61.5,32" Stroke="{StaticResource Accent}" StrokeThickness="5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" RenderTransformOrigin="0.5,0.5">
+              <Path.RenderTransform><RotateTransform x:Name="SpinRot" Angle="0"/></Path.RenderTransform>
+            </Path>
+          </Grid>
+          <TextBlock x:Name="PrepTitle" Style="{StaticResource H1}" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,26,0,0" Text="Préparation…"/>
+          <TextBlock x:Name="PrepSub" Style="{StaticResource Sub}" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="420"/>
+        </StackPanel>
+
+        <!-- EN ATTENTE DU CLIENT -->
+        <StackPanel x:Name="VWait" Visibility="Collapsed">
+          <TextBlock Style="{StaticResource H1}" Text="Prêt à envoyer"/>
+          <TextBlock x:Name="WaitSub" Style="{StaticResource Sub}"/>
+          <Border CornerRadius="16" Background="#151922" BorderBrush="#252B38" BorderThickness="1" Margin="0,22,0,0" Padding="18,16">
+            <TextBox x:Name="MsgBox" Background="Transparent" BorderThickness="0" Foreground="#E6EAF2" FontSize="14.5" TextWrapping="Wrap" IsReadOnly="True" CaretBrush="#7C5CFF" SelectionBrush="#7C5CFF"/>
+          </Border>
+          <Grid Margin="0,18,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
+            <Button x:Name="BtnCopy" Style="{StaticResource Primary}" Content="Copier le message"/>
+            <Button x:Name="BtnCancelWait" Grid.Column="2" Style="{StaticResource Ghost}" Content="Annuler"/>
+          </Grid>
+          <Border CornerRadius="14" Background="#11141B" Margin="0,22,0,0" Padding="16,14">
+            <StackPanel>
+              <StackPanel Orientation="Horizontal">
+                <Ellipse x:Name="WaitDot" Width="9" Height="9" Fill="#22D3EE" VerticalAlignment="Center"/>
+                <TextBlock x:Name="WaitState" Text="En attente de ton client…" FontSize="14" FontWeight="SemiBold" Margin="10,0,0,0"/>
+              </StackPanel>
+              <TextBlock x:Name="WaitInfo" FontSize="12.5" Foreground="#7D8597" Margin="19,6,0,0" TextWrapping="Wrap"/>
+              <TextBlock x:Name="WaitWarn" FontSize="12.5" Foreground="#FBBF24" Margin="19,6,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- TRANSFERT EN COURS -->
+        <StackPanel x:Name="VRun" Visibility="Collapsed">
+          <TextBlock x:Name="RunTitle" Style="{StaticResource H1}" Text="Envoi en cours"/>
+          <TextBlock x:Name="RunSub" Style="{StaticResource Sub}"/>
+          <TextBlock x:Name="Pct" Text="0 %" FontSize="64" FontWeight="SemiBold" Margin="0,26,0,0" Foreground="#F4F6FA"/>
+          <Grid Height="40" Margin="0,4,0,0">
+            <Border x:Name="BarTrack" Height="12" CornerRadius="6" Background="#1A1E28" VerticalAlignment="Center"/>
+            <Border x:Name="BarFill" Height="12" CornerRadius="6" Background="{StaticResource Accent}" HorizontalAlignment="Left" VerticalAlignment="Center" Width="0">
+              <Border.Effect><DropShadowEffect BlurRadius="16" ShadowDepth="0" Color="#5B8CFF" Opacity="0.7"/></Border.Effect>
+            </Border>
+            <Canvas x:Name="Fx" IsHitTestVisible="False" ClipToBounds="False"/>
+          </Grid>
+          <Grid Margin="0,16,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock Style="{StaticResource StatLabel}" Text="Transféré"/><TextBlock x:Name="StDone" Style="{StaticResource StatValue}" Text="–"/></StackPanel>
+            <StackPanel Grid.Column="1"><TextBlock Style="{StaticResource StatLabel}" Text="Vitesse"/><TextBlock x:Name="StSpeed" Style="{StaticResource StatValue}" Text="–"/></StackPanel>
+            <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource StatLabel}" Text="Temps restant"/><TextBlock x:Name="StEta" Style="{StaticResource StatValue}" Text="–"/></StackPanel>
+          </Grid>
+          <Border CornerRadius="12" Background="#11141B" Margin="0,22,0,0" Padding="14,11">
+            <TextBlock x:Name="CurFile" FontSize="12.5" Foreground="#7D8597" TextTrimming="CharacterEllipsis" Text=" "/>
+          </Border>
+          <Button x:Name="BtnCancelRun" Style="{StaticResource Ghost}" Content="Annuler" Margin="0,22,0,0"/>
+        </StackPanel>
+
+        <!-- TERMINE -->
+        <StackPanel x:Name="VDone" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,0,0,40">
+          <Grid Width="96" Height="96" HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform><ScaleTransform x:Name="CheckScale" ScaleX="1" ScaleY="1"/></Grid.RenderTransform>
+            <Ellipse Fill="#123227"/>
+            <Ellipse Margin="12" Fill="#34D399"/>
+            <Path Data="M0,9 L7,16 L20,1" Stroke="#0B1F17" StrokeThickness="3.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Grid>
+          <TextBlock x:Name="DoneTitle" Style="{StaticResource H1}" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,26,0,0" Text="Transfert terminé"/>
+          <TextBlock x:Name="DoneSub" Style="{StaticResource Sub}" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="440"/>
+          <Border x:Name="DoneVerifyBox" CornerRadius="12" Background="#11141B" Margin="0,20,0,0" Padding="14,11" HorizontalAlignment="Center">
+            <TextBlock x:Name="DoneVerify" FontSize="13" Foreground="#34D399" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="420"/>
+          </Border>
+          <Grid Margin="0,26,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="12"/><ColumnDefinition/></Grid.ColumnDefinitions>
+            <Button x:Name="BtnDone1" Style="{StaticResource Primary}" Content="Ouvrir"/>
+            <Button x:Name="BtnDone2" Grid.Column="2" Style="{StaticResource Ghost}" Content="Fermer"/>
+          </Grid>
+        </StackPanel>
+
+        <!-- ERREUR -->
+        <StackPanel x:Name="VError" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,0,0,40">
+          <Grid Width="80" Height="80" HorizontalAlignment="Center">
+            <Ellipse Fill="#3A1A1E"/>
+            <Path Data="M0,0 L0,14 M0,21 L0,22" Stroke="#F87171" StrokeThickness="3.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Grid>
+          <TextBlock x:Name="ErrTitle" Style="{StaticResource H1}" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,24,0,0" Text="Un problème est survenu"/>
+          <TextBlock x:Name="ErrSub" Style="{StaticResource Sub}" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="440"/>
+          <Grid Margin="0,26,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="12"/><ColumnDefinition/></Grid.ColumnDefinitions>
+            <Button x:Name="BtnErr1" Style="{StaticResource Primary}" Content="Réessayer"/>
+            <Button x:Name="BtnErr2" Grid.Column="2" Style="{StaticResource Ghost}" Content="Fermer"/>
+          </Grid>
+        </StackPanel>
+
+        <!-- CODE (réception sans lien) -->
+        <StackPanel x:Name="VCode" Visibility="Collapsed">
+          <TextBlock Style="{StaticResource H1}" Text="Recevoir un dossier"/>
+          <TextBlock Style="{StaticResource Sub}" Text="Colle le lien ou le message que tu as reçu."/>
+          <Border CornerRadius="14" Background="#151922" BorderBrush="#2C3240" BorderThickness="1" Margin="0,24,0,0" Padding="14,4">
+            <TextBox x:Name="CodeBox" Background="Transparent" BorderThickness="0" Foreground="#F4F6FA" FontSize="15" Height="44" VerticalContentAlignment="Center" CaretBrush="#22D3EE"/>
+          </Border>
+          <Button x:Name="BtnCode" Style="{StaticResource Primary}" Content="Recevoir" Margin="0,16,0,0"/>
+        </StackPanel>
+      </Grid>
+
+      <!-- pied -->
+      <Border Grid.Row="2" BorderBrush="#1C202A" BorderThickness="0,1,0,0" Margin="28,0,28,0">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <Path Data="M2,7 L2,5 A4,4 0 0 1 10,5 L10,7 M0,7 L12,7 L12,15 L0,15 Z" Stroke="#5F6778" StrokeThickness="1.3" VerticalAlignment="Center"/>
+          <TextBlock x:Name="Foot" Text="Direct d'un PC à l'autre · rien n'est stocké en ligne · sans limite de taille" FontSize="12" Foreground="#5F6778" Margin="10,0,0,0" VerticalAlignment="Center"/>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Border>
+</Window>
+'@
+
+$LogoXaml = @'
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Width="256" Height="256">
+  <Canvas Width="32" Height="32">
+    <Rectangle Width="32" Height="32" RadiusX="9" RadiusY="9">
+      <Rectangle.Fill>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+          <GradientStop Color="#7C5CFF" Offset="0"/>
+          <GradientStop Color="#22D3EE" Offset="1"/>
+        </LinearGradientBrush>
+      </Rectangle.Fill>
+    </Rectangle>
+    <Path Data="M8,21 C12,21 14,11 22,11" Stroke="White" StrokeThickness="2.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+    <Path Data="M18.5,7.5 L22.5,11 L18.5,14.5" Stroke="White" StrokeThickness="2.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+    <Ellipse Canvas.Left="6.2" Canvas.Top="19.5" Width="3" Height="3" Fill="White" Opacity="0.7"/>
+  </Canvas>
+</Viewbox>
+'@
+
+# ---------------------------------------------------------------- démarrage de l'interface (avec secours)
+try {
+    Add-Type -AssemblyName PresentationFramework
+    Add-Type -AssemblyName PresentationCore
+    Add-Type -AssemblyName WindowsBase
+    Add-Type -AssemblyName System.Windows.Forms
+    $win = [Windows.Markup.XamlReader]::Parse($Xaml)
+    $ui = @{}
+    foreach ($n in 'Root','TitleBar','BtnMin','BtnClose','VIdle','Drop','DropRect','DropFloat','VPrep','SpinRot','PrepTitle','PrepSub',
+                   'VWait','WaitSub','MsgBox','BtnCopy','BtnCancelWait','WaitDot','WaitState','WaitInfo','WaitWarn',
+                   'VRun','RunTitle','RunSub','Pct','BarTrack','BarFill','Fx','StDone','StSpeed','StEta','CurFile','BtnCancelRun',
+                   'VDone','CheckScale','DoneTitle','DoneSub','DoneVerifyBox','DoneVerify','BtnDone1','BtnDone2',
+                   'VError','ErrTitle','ErrSub','BtnErr1','BtnErr2','VCode','CodeBox','BtnCode','Foot') {
+        $ui[$n] = $win.FindName($n)
+        if ($null -eq $ui[$n]) { throw "Élément d'interface manquant : $n" }
+    }
+} catch {
+    # Secours : ancienne interface, toujours fonctionnelle
+    iex (Invoke-RestMethod ($Site + 'classic.txt'))
+    return
+}
 
 # ---------------------------------------------------------------- état
 $S = @{
-    Proc = $null; Readers = @(); Code = ''; Paths = @(); Name = ''; Size = 0L
+    Proc = $null; Readers = @(); Code = ''; Paths = @(); Name = ''; Size = 0L; Files = 0
     Total = 0.0; Done = 0.0; CurName = $null; CurMax = 0.0; CurCounted = $false; LastPct = 0
-    Overall = 0.0; Speed = 0.0; Running = $false; Cancel = $false; Retries = 0; RetryAt = $null
-    Bg = @{}; Croc = $null; Scan = $null; AttrFile = $null; Lines = New-Object System.Collections.Generic.List[string]
-    View = ''; Anim = 0; Dest = ''; StartTime = $null; Indeterminate = $false; GotProgress = $false
+    Overall = 0.0; Speed = 0.0; Running = $false; Retries = 0; RetryAt = $null
+    Bg = @{}; Croc = $null; Scan = $null; Manifest = $null; Lines = New-Object System.Collections.Generic.List[string]
+    View = ''; Dest = ''; StartTime = $null; GotProgress = $false
+    TargetPct = 0.0; ShownPct = 0.0; Particles = New-Object System.Collections.ArrayList; Tick = 0
+    SndDrop = $null; SndDone = $null; Rand = New-Object Random
 }
 
 # ---------------------------------------------------------------- utilitaires
@@ -42,8 +372,8 @@ function Format-Size([double]$b) {
     return ('{0:N0} o' -f $b)
 }
 function Format-Dur([double]$s) {
-    if ($s -lt 0 -or [double]::IsInfinity($s) -or [double]::IsNaN($s)) { return '' }
-    if ($s -lt 60) { return ('{0:N0} s' -f $s) }
+    if ($s -lt 0 -or [double]::IsInfinity($s) -or [double]::IsNaN($s)) { return '–' }
+    if ($s -lt 60) { return ('{0:N0} s' -f [math]::Max(1, $s)) }
     if ($s -lt 3600) { return ('{0:N0} min' -f [math]::Ceiling($s / 60)) }
     $h = [math]::Floor($s / 3600); $m = [math]::Floor(($s % 3600) / 60)
     return ('{0} h {1:00}' -f $h, $m)
@@ -63,11 +393,15 @@ function ConvertTo-Bytes([string]$n, [string]$u) {
     }
 }
 function Set-Awake([bool]$on) {
-    try { if ($on) { [void][TSApp.Native]::SetThreadExecutionState([uint32]2147483649) } else { [void][TSApp.Native]::SetThreadExecutionState([uint32]2147483648) } } catch {}
+    try { if ($on) { [void][SillageNative.W]::SetThreadExecutionState([uint32]2147483649) } else { [void][SillageNative.W]::SetThreadExecutionState([uint32]2147483648) } } catch {}
 }
 function Copy-Text([string]$t) {
-    for ($i = 0; $i -lt 5; $i++) { try { [Windows.Forms.Clipboard]::SetText($t); return $true } catch { Start-Sleep -Milliseconds 120 } }
+    for ($i = 0; $i -lt 6; $i++) { try { [Windows.Clipboard]::SetText($t); return $true } catch { Start-Sleep -Milliseconds 120 } }
     return $false
+}
+function Play-Sound($bytes) {
+    if (-not $bytes) { return }
+    try { $sp = New-Object Media.SoundPlayer ([IO.MemoryStream]::new([byte[]]$bytes)); $sp.Play() } catch {}
 }
 function Start-Bg([string]$key, [scriptblock]$sb, [object[]]$argList) {
     $ps = [powershell]::Create()
@@ -76,16 +410,19 @@ function Start-Bg([string]$key, [scriptblock]$sb, [object[]]$argList) {
     $S.Bg[$key] = @{ PS = $ps; H = $ps.BeginInvoke() }
 }
 function Receive-Bg([string]$key) {
-    # renvoie $null si pas fini ; sinon @{ Ok; Value; Error }
     $bg = $S.Bg[$key]
     if (-not $bg -or -not $bg.H.IsCompleted) { return $null }
     $S.Bg.Remove($key)
     try {
         $out = $bg.PS.EndInvoke($bg.H)
-        if ($bg.PS.HadErrors -and $out.Count -eq 0) { $msg = ($bg.PS.Streams.Error | Select-Object -First 1 | Out-String).Trim(); return @{ Ok = $false; Error = $msg } }
+        if ($out.Count -eq 0 -and $bg.PS.HadErrors) { return @{ Ok = $false; Error = (($bg.PS.Streams.Error | Select-Object -First 1 | Out-String).Trim()) } }
         return @{ Ok = $true; Value = ($out | Select-Object -Last 1) }
-    } catch { return @{ Ok = $false; Error = $_.Exception.InnerException.Message + $_.Exception.Message } }
+    } catch { return @{ Ok = $false; Error = ("" + $_.Exception.InnerException.Message + " " + $_.Exception.Message).Trim() } }
     finally { $bg.PS.Dispose() }
+}
+function New-Brush([byte]$a, [byte]$r, [byte]$g, [byte]$b) {
+    $br = New-Object Windows.Media.SolidColorBrush ([Windows.Media.Color]::FromArgb($a, $r, $g, $b))
+    $br.Freeze(); return $br
 }
 
 # ---------------------------------------------------------------- tâches de fond
@@ -97,7 +434,7 @@ $InstallCroc = {
     $exe = Join-Path $AppDir 'croc.exe'
     if (Test-Path -LiteralPath $exe) { return $exe }
     $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'Windows-ARM64' } else { 'Windows-64bit' }
-    $rel = Invoke-RestMethod 'https://api.github.com/repos/schollz/croc/releases/latest' -Headers @{ 'User-Agent' = 'TransfertSecurise' }
+    $rel = Invoke-RestMethod 'https://api.github.com/repos/schollz/croc/releases/latest' -Headers @{ 'User-Agent' = 'Sillage' }
     $asset = $rel.assets | Where-Object { $_.name -like "*_$arch.zip" } | Select-Object -First 1
     if (-not $asset) { throw "Moteur de transfert introuvable pour $arch." }
     $zip = Join-Path $AppDir $asset.name
@@ -121,11 +458,13 @@ $InstallCroc = {
     Remove-Item -LiteralPath $zip, $tmp -Recurse -Force
     return $exe
 }
+# Inventaire complet : chaque fichier et dossier (cachés, système, vides compris)
 $ScanPaths = {
     param([string[]]$paths)
     $ErrorActionPreference = 'Continue'
-    $size = 0L; $files = 0; $errs = 0
+    $size = 0L; $files = 0; $dirs = 0; $errs = 0
     $lines = New-Object System.Collections.Generic.List[string]
+    $bad = New-Object System.Collections.Generic.List[string]
     foreach ($p in $paths) {
         $parent = (Split-Path $p -Parent).TrimEnd('\')
         $root = Get-Item -LiteralPath $p -Force
@@ -134,130 +473,80 @@ $ScanPaths = {
         if ($root.PSIsContainer) {
             $ev = $null
             foreach ($c in (Get-ChildItem -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue -ErrorVariable ev)) { $items.Add($c) }
-            if ($ev) { $errs += $ev.Count }
+            if ($ev) { $errs += $ev.Count; foreach ($e in ($ev | Select-Object -First 5)) { $bad.Add([string]$e.TargetObject) } }
         }
         foreach ($it in $items) {
-            if (-not $it.PSIsContainer) { $files++; $size += $it.Length }
             $f = ''
             if ($it.Attributes -band [IO.FileAttributes]::Hidden) { $f += 'H' }
             if ($it.Attributes -band [IO.FileAttributes]::System) { $f += 'S' }
             if (-not $it.PSIsContainer -and ($it.Attributes -band [IO.FileAttributes]::ReadOnly)) { $f += 'R' }
-            if ($f) { $lines.Add($f + "`t" + $it.FullName.Substring($parent.Length).TrimStart('\')) }
+            $rel = $it.FullName.Substring($parent.Length).TrimStart('\')
+            if ($it.PSIsContainer) { $dirs++; $lines.Add("D`t0`t$f`t$rel") }
+            else { $files++; $size += $it.Length; $lines.Add("F`t$($it.Length)`t$f`t$rel") }
         }
     }
-    return [pscustomobject]@{ Size = $size; Files = $files; Attr = $lines.ToArray(); Errors = $errs }
+    return [pscustomobject]@{ Size = $size; Files = $files; Dirs = $dirs; Lines = $lines.ToArray(); Errors = $errs; Bad = $bad.ToArray() }
+}
+# Sons discrets générés à la volée (aucun fichier externe)
+$MakeSound = {
+    param($notes, [double]$vol)
+    $rate = 44100
+    $len = 0.0; foreach ($nt in $notes) { $len = [math]::Max($len, [double]$nt[1] + [double]$nt[2]) }
+    $n = [int](($len + 0.05) * $rate)
+    $buf = New-Object double[] $n
+    foreach ($nt in $notes) {
+        $f = [double]$nt[0]; $s = [int]([double]$nt[1] * $rate); $d = [int]([double]$nt[2] * $rate); $dur = [double]$nt[2]
+        $w = 2 * [math]::PI * $f / $rate
+        for ($i = 0; $i -lt $d -and ($s + $i) -lt $n; $i++) {
+            $t = $i / $rate
+            $env = [math]::Min(1.0, $i / 300.0) * [math]::Exp(-4.5 * $t / $dur)
+            $buf[$s + $i] += $vol * $env * ([math]::Sin($w * $i) + 0.25 * [math]::Sin(2 * $w * $i))
+        }
+    }
+    $ms = New-Object IO.MemoryStream
+    $bw = New-Object IO.BinaryWriter($ms)
+    $bw.Write([Text.Encoding]::ASCII.GetBytes('RIFF')); $bw.Write([int](36 + $n * 2))
+    $bw.Write([Text.Encoding]::ASCII.GetBytes('WAVEfmt ')); $bw.Write([int]16); $bw.Write([int16]1); $bw.Write([int16]1)
+    $bw.Write([int]$rate); $bw.Write([int]($rate * 2)); $bw.Write([int16]2); $bw.Write([int16]16)
+    $bw.Write([Text.Encoding]::ASCII.GetBytes('data')); $bw.Write([int]($n * 2))
+    for ($i = 0; $i -lt $n; $i++) { $v = [math]::Max(-1.0, [math]::Min(1.0, $buf[$i])); $bw.Write([int16]($v * 32000)) }
+    $bw.Flush()
+    return [pscustomobject]@{ B = $ms.ToArray() }
 }
 
-# ---------------------------------------------------------------- interface
-$C_BG = [Drawing.Color]::FromArgb(17, 20, 24)
-$C_PANEL = [Drawing.Color]::FromArgb(30, 35, 42)
-$C_MUTE = [Drawing.Color]::FromArgb(160, 170, 180)
-$C_ACC = [Drawing.Color]::FromArgb(232, 37, 26)
-$C_OK = [Drawing.Color]::FromArgb(46, 204, 113)
-$F_TITLE = New-Object Drawing.Font('Segoe UI Semibold', 17)
-$F_BODY = New-Object Drawing.Font('Segoe UI', 10.5)
-$F_SMALL = New-Object Drawing.Font('Segoe UI', 9)
-$F_BTN = New-Object Drawing.Font('Segoe UI Semibold', 10.5)
-
-$form = New-Object Windows.Forms.Form
-$form.Text = if ($Mode -eq 'send') { 'Transfert sécurisé - Envoyer' } else { 'Transfert sécurisé - Recevoir' }
-$form.ClientSize = New-Object Drawing.Size(580, 420)
-$form.StartPosition = 'CenterScreen'
-$form.FormBorderStyle = 'FixedSingle'
-$form.MaximizeBox = $false
-$form.BackColor = $C_BG
-$form.ForeColor = [Drawing.Color]::White
-$form.Font = $F_BODY
-try { $form.Icon = [Drawing.SystemIcons]::Shield } catch {}
-
-function New-Label($x, $y, $w, $h, $font, $color) {
-    $l = New-Object Windows.Forms.Label
-    $l.Location = New-Object Drawing.Point($x, $y); $l.Size = New-Object Drawing.Size($w, $h)
-    $l.Font = $font; $l.ForeColor = $color; $l.BackColor = [Drawing.Color]::Transparent
-    $form.Controls.Add($l); return $l
-}
-function New-Button($x, $y, $w, $primary) {
-    $b = New-Object Windows.Forms.Button
-    $b.Location = New-Object Drawing.Point($x, $y); $b.Size = New-Object Drawing.Size($w, 46)
-    $b.FlatStyle = 'Flat'; $b.FlatAppearance.BorderSize = if ($primary) { 0 } else { 1 }
-    $b.FlatAppearance.BorderColor = $C_MUTE
-    $b.BackColor = if ($primary) { $C_ACC } else { $C_BG }
-    $b.ForeColor = [Drawing.Color]::White; $b.Font = $F_BTN; $b.Cursor = 'Hand'
-    $form.Controls.Add($b); return $b
-}
-
-$lblBadge = New-Label 30 22 520 20 $F_SMALL $C_MUTE
-$lblBadge.Text = 'CHIFFRÉ DE BOUT EN BOUT  ·  SANS LIMITE DE TAILLE'
-$lblTitle = New-Label 28 46 524 40 $F_TITLE ([Drawing.Color]::White)
-$lblSub = New-Label 30 90 520 48 $F_BODY $C_MUTE
-
-$drop = New-Object Windows.Forms.Label
-$drop.Location = New-Object Drawing.Point(30, 146); $drop.Size = New-Object Drawing.Size(520, 170)
-$drop.TextAlign = 'MiddleCenter'; $drop.BackColor = $C_PANEL; $drop.ForeColor = [Drawing.Color]::White
-$drop.Font = New-Object Drawing.Font('Segoe UI Semibold', 13); $drop.Cursor = 'Hand'; $drop.AllowDrop = $true
-$drop.Text = "Glisse ton dossier ou tes fichiers ici`n`nou clique pour choisir un dossier"
-$drop.Add_Paint({
-    $pen = New-Object Drawing.Pen($C_MUTE, 2)
-    $pen.DashStyle = [Drawing.Drawing2D.DashStyle]::Dash
-    $_.Graphics.DrawRectangle($pen, 2, 2, $this.Width - 5, $this.Height - 5)
-    $pen.Dispose()
-})
-$form.Controls.Add($drop)
-
-$box = New-Object Windows.Forms.TextBox
-$box.Location = New-Object Drawing.Point(30, 146); $box.Size = New-Object Drawing.Size(520, 100)
-$box.Multiline = $true; $box.ReadOnly = $true; $box.BorderStyle = 'None'
-$box.BackColor = $C_PANEL; $box.ForeColor = [Drawing.Color]::White; $box.Font = $F_BODY
-$form.Controls.Add($box)
-
-$txtCode = New-Object Windows.Forms.TextBox
-$txtCode.Location = New-Object Drawing.Point(30, 160); $txtCode.Size = New-Object Drawing.Size(520, 30)
-$txtCode.BackColor = $C_PANEL; $txtCode.ForeColor = [Drawing.Color]::White; $txtCode.BorderStyle = 'FixedSingle'
-$txtCode.Font = New-Object Drawing.Font('Segoe UI', 12)
-$form.Controls.Add($txtCode)
-
-$track = New-Object Windows.Forms.Panel
-$track.Location = New-Object Drawing.Point(30, 168); $track.Size = New-Object Drawing.Size(520, 14); $track.BackColor = $C_PANEL
-$fill = New-Object Windows.Forms.Panel
-$fill.Location = New-Object Drawing.Point(0, 0); $fill.Size = New-Object Drawing.Size(0, 14); $fill.BackColor = $C_ACC
-$track.Controls.Add($fill); $form.Controls.Add($track)
-
-$lblStat = New-Label 30 194 520 26 (New-Object Drawing.Font('Segoe UI Semibold', 11)) ([Drawing.Color]::White)
-$lblFile = New-Label 30 222 520 40 $F_SMALL $C_MUTE
-$lblFile.AutoEllipsis = $true
-
-$btn1 = New-Button 30 346 250 $true
-$btn2 = New-Button 300 346 250 $false
-$lblFoot = New-Label 30 396 520 18 $F_SMALL $C_MUTE
-$lblFoot.Text = 'Les fichiers vont directement d''un PC à l''autre. Personne d''autre ne peut les lire.'
-
-function Set-View([string]$v, [string]$title, [string]$sub) {
+# ---------------------------------------------------------------- vues
+$AllViews = @('VIdle', 'VPrep', 'VWait', 'VRun', 'VDone', 'VError', 'VCode')
+function Show-View([string]$v) {
     $S.View = $v
-    $lblTitle.Text = $title; $lblSub.Text = $sub
-    $drop.Visible = ($v -eq 'idle')
-    $box.Visible = ($v -eq 'wait')
-    $txtCode.Visible = ($v -eq 'code')
-    $prog = @('prep', 'wait', 'connect', 'run', 'retry') -contains $v
-    $track.Visible = $prog; $lblStat.Visible = $prog; $lblFile.Visible = $prog
-    if ($v -eq 'wait') { $track.Top = 262; $lblStat.Top = 284; $lblFile.Top = 310; $lblFile.Height = 22 }
-    else { $track.Top = 168; $lblStat.Top = 194; $lblFile.Top = 222; $lblFile.Height = 40 }
-    $S.Indeterminate = @('prep', 'wait', 'connect', 'retry') -contains $v
-    if ($v -eq 'done') { $fill.BackColor = $C_OK } else { $fill.BackColor = $C_ACC }
-    $btn1.Visible = $false; $btn2.Visible = $false
-    if (-not $prog) { $lblStat.Text = ''; $lblFile.Text = '' }
+    foreach ($n in $AllViews) { $ui[$n].Visibility = if ($n -eq $v) { 'Visible' } else { 'Collapsed' } }
+    $fade = New-Object Windows.Media.Animation.DoubleAnimation(0.0, 1.0, (New-Object Windows.Duration ([TimeSpan]::FromMilliseconds(260))))
+    $ui[$v].BeginAnimation([Windows.UIElement]::OpacityProperty, $fade)
 }
-function Set-Buttons([string]$t1, [string]$t2) {
-    $btn1.Text = $t1; $btn1.Visible = [bool]$t1
-    $btn2.Text = $t2; $btn2.Visible = [bool]$t2
-}
-function Set-Fill([double]$pct) {
-    $pct = [math]::Max(0, [math]::Min(100, $pct))
-    $fill.Left = 0; $fill.Width = [int]($track.Width * $pct / 100)
-}
+function Show-Prep([string]$title, [string]$sub) { $ui.PrepTitle.Text = $title; $ui.PrepSub.Text = $sub; Show-View 'VPrep' }
 function Show-Error([string]$msg) {
     Stop-Croc
-    Set-View 'error' 'Un problème est survenu' $msg
-    Set-Buttons 'Réessayer' 'Fermer'
+    $ui.ErrSub.Text = $msg
+    Show-View 'VError'
+}
+function Show-Done([string]$title, [string]$sub, [string]$verify, [bool]$verifyOk, [string]$b1) {
+    $ui.DoneTitle.Text = $title; $ui.DoneSub.Text = $sub
+    $ui.DoneVerify.Text = $verify
+    $ui.DoneVerify.Foreground = if ($verifyOk) { New-Brush 255 52 211 153 } else { New-Brush 255 251 191 36 }
+    $ui.DoneVerifyBox.Visibility = if ($verify) { 'Visible' } else { 'Collapsed' }
+    $ui.BtnDone1.Content = $b1
+    Show-View 'VDone'
+    $ease = New-Object Windows.Media.Animation.BackEase; $ease.Amplitude = 0.45; $ease.EasingMode = 'EaseOut'
+    $pop = New-Object Windows.Media.Animation.DoubleAnimation(0.4, 1.0, (New-Object Windows.Duration ([TimeSpan]::FromMilliseconds(520))))
+    $pop.EasingFunction = $ease
+    $ui.CheckScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleXProperty, $pop)
+    $ui.CheckScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleYProperty, $pop)
+    Play-Sound $S.SndDone
+}
+function Show-Run {
+    if ($Mode -eq 'send') { $ui.RunTitle.Text = 'Envoi en cours'; $ui.RunSub.Text = "Ton client reçoit « $($S.Name) ». Laisse Sillage ouvert jusqu'à la fin." }
+    else { $ui.RunTitle.Text = 'Réception en cours'; $ui.RunSub.Text = "Enregistrement dans $($S.Dest). Laisse cette fenêtre ouverte jusqu'à la fin." }
+    $ui.RunSub.Foreground = New-Brush 255 142 150 168
+    Show-View 'VRun'
 }
 
 # ---------------------------------------------------------------- moteur (croc)
@@ -291,6 +580,8 @@ function Stop-Croc {
     Set-Awake $false
 }
 $ESC = [string][char]27
+$RxProg = '^(.*?)\s*(\d{1,3})%\s*\|.*?\|\s*\(([\d.]+)/([\d.]+)\s*([kKMGTP]?i?B)(?:,\s*([\d.]+)\s*([kKMGTP]?i?B)/s)?\)'
+$RxTotal = '^(Sending|Receiving|Accept)\s.*\(([\d.]+)\s*([kKMGTP]?i?B)\)'
 function Read-Croc {
     foreach ($r in $S.Readers) {
         while (-not $r.Done -and $r.Task.IsCompleted) {
@@ -308,10 +599,8 @@ function Read-Croc {
         if ($r.Done -and $r.Acc) { Read-Line $r.Acc; $r.Acc = '' }
     }
 }
-$RxProg = '^(.*?)\s*(\d{1,3})%\s*\|.*?\|\s*\(([\d.]+)/([\d.]+)\s*([kKMGTP]?i?B)(?:,\s*([\d.]+)\s*([kKMGTP]?i?B)/s)?\)'
-$RxTotal = '^(Sending|Receiving|Accept)\s.*\(([\d.]+)\s*([kKMGTP]?i?B)\)'
 function Read-Line([string]$l) {
-    if ($S.View -eq 'error') { return }
+    if ($S.View -eq 'VError') { return }
     $l = ($l -replace ($ESC + '\[[0-9;?]*[A-Za-z]'), '').Trim()
     if (-not $l) { return }
     if ($l -notmatch '%\s*\|') { $S.Lines.Add($l); if ($S.Lines.Count -gt 12) { $S.Lines.RemoveAt(0) } }
@@ -331,30 +620,22 @@ function Read-Line([string]$l) {
         $S.CurMax = $max; $S.LastPct = $pct
         if ($pct -ge 100 -and -not $S.CurCounted) { $S.Done += $max; $S.CurCounted = $true }
         $S.Overall = $S.Done + $(if ($S.CurCounted) { 0 } else { $cur })
-        if (-not $S.GotProgress) {
-            $S.GotProgress = $true; $S.Retries = 0
-            if ($Mode -eq 'send') { Set-View 'run' 'Envoi en cours' "Ton client télécharge « $($S.Name) ». Laisse cette fenêtre ouverte." }
-            else { Set-View 'run' 'Réception en cours' "Enregistrement dans : $($S.Dest)`nLaisse cette fenêtre ouverte jusqu'à la fin." }
-            Set-Buttons '' 'Annuler'
-        }
+        if (-not $S.GotProgress) { $S.GotProgress = $true; $S.Retries = 0; Show-Run }
         $total = if ($S.Total -gt 0) { $S.Total } else { $max }
-        $gpct = if ($total -gt 0) { 100 * $S.Overall / $total } else { $pct }
-        $gpct = [math]::Min(99.9, $gpct)
-        Set-Fill $gpct
-        $eta = if ($S.Speed -gt 0) { Format-Dur (($total - $S.Overall) / $S.Speed) } else { '' }
-        $parts = @(('{0:N0} %' -f [math]::Floor($gpct)), ((Format-Size $S.Overall) + ' / ' + (Format-Size $total)))
-        if ($S.Speed -gt 0) { $parts += ((Format-Size $S.Speed) + '/s') }
-        if ($eta) { $parts += ('reste ' + $eta) }
-        $lblStat.Text = $parts -join '   ·   '
-        $lblFile.Text = $name
+        $S.TargetPct = if ($total -gt 0) { [math]::Min(99.9, 100 * $S.Overall / $total) } else { $pct }
+        $ui.StDone.Text = (Format-Size $S.Overall) + ' / ' + (Format-Size $total)
+        if ($S.Speed -gt 0) {
+            $ui.StSpeed.Text = (Format-Size $S.Speed) + '/s'
+            $ui.StEta.Text = Format-Dur (($total - $S.Overall) / $S.Speed)
+        }
+        if ($name) { $ui.CurFile.Text = $name }
     }
 }
 function Test-Space {
     try {
         $drive = (Get-Item -LiteralPath $S.Dest).PSDrive
         if ($drive -and $drive.Free -and $S.Total -gt ($drive.Free + 1e8)) {
-            $need = Format-Size $S.Total; $free = Format-Size $drive.Free
-            Show-Error "Pas assez de place sur le disque $($drive.Name): pour recevoir ce dossier.`nIl faut $need, il reste $free. Libère de la place puis clique sur Réessayer."
+            Show-Error ("Pas assez de place sur le disque $($drive.Name): pour recevoir ce dossier.`nIl faut " + (Format-Size $S.Total) + ', il reste ' + (Format-Size $drive.Free) + '. Libère de la place, puis clique sur Réessayer.')
         }
     } catch {}
 }
@@ -369,74 +650,56 @@ function New-Code {
 function Start-Send([string[]]$paths) {
     $paths = @($paths | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | ForEach-Object { (Resolve-Path -LiteralPath $_).ProviderPath.TrimEnd('\') })
     if ($paths.Count -eq 0) { return }
+    Play-Sound $S.SndDrop
     $S.Paths = $paths
     $S.Name = if ($paths.Count -eq 1) { Split-Path $paths[0] -Leaf } else { "$($paths.Count) éléments" }
-    Set-View 'prep' 'Préparation…' "Analyse de « $($S.Name) » (fichiers cachés compris)…"
-    $lblStat.Text = ''; $lblFile.Text = ''
+    Show-Prep 'Préparation…' "Inventaire complet de « $($S.Name) », fichiers cachés et protégés compris."
+    $S.Scan = $null
     Start-Bg 'scan' $ScanPaths @(, [string[]]$paths)
     if (-not $S.Croc -and -not $S.Bg.ContainsKey('croc')) { Start-Bg 'croc' $InstallCroc @($AppDir) }
-    $S.Scan = $null
 }
 function Start-SendCroc {
     $list = @($S.Paths)
-    if ($S.AttrFile) { $list += $S.AttrFile }
+    if ($S.Manifest) { $list += $S.Manifest }
     $q = ($list | ForEach-Object { '"' + $_ + '"' }) -join ' '
-    Start-Croc ("--no-compress send --code " + $S.Code + " " + $q) $null
+    Start-Croc ('--no-compress send --code ' + $S.Code + ' ' + $q) $null
 }
 function Send-Ready {
     $sc = $S.Scan
-    $S.Size = [int64]$sc.Size
-    $S.AttrFile = $null
-    if ($sc.Attr -and $sc.Attr.Count) {
-        $dir = Join-Path $AppDir ('envoi_' + [guid]::NewGuid().ToString('N').Substring(0, 8))
-        New-Item -ItemType Directory -Force -Path $dir | Out-Null
-        $S.AttrFile = Join-Path $dir 'attributs.tsattr'
-        [IO.File]::WriteAllLines($S.AttrFile, [string[]]$sc.Attr, (New-Object Text.UTF8Encoding $false))
-    }
+    $S.Size = [int64]$sc.Size; $S.Files = [int]$sc.Files
     $S.Code = New-Code
-    $link = $Site + 'recevoir.html#' + $S.Code
-    $msg = "Je t'envoie « $($S.Name) » ($(Format-Size $S.Size)), chiffré de bout en bout.`r`nClique sur ce lien pour le recevoir : $link"
-    $box.Text = $msg
+    $dir = Join-Path $AppDir ('envoi_' + $S.Code.Substring(0, 4) + '_' + [guid]::NewGuid().ToString('N').Substring(0, 6))
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+    $S.Manifest = Join-Path $dir ('sillage-' + $S.Code.Substring(0, 4) + '.sillage')
+    [IO.File]::WriteAllLines($S.Manifest, [string[]]$sc.Lines, (New-Object Text.UTF8Encoding $false))
+    $link = $Site + 'dl.html#' + $S.Code + '/' + [uri]::EscapeDataString($S.Name) + '/' + $S.Size
+    $msg = "Bonjour,`r`n`r`nVoici « $($S.Name) » ($(Format-Size $S.Size)).`r`nClique sur ce lien pour le télécharger :`r`n$link"
+    $ui.MsgBox.Text = $msg
     $ok = Copy-Text $msg
-    $sub = if ($ok) { "✓ Message copié. Colle-le à ton client (Ctrl + V) par mail, SMS ou WhatsApp." } else { "Copie ce message et envoie-le à ton client." }
-    if ($sc.Errors -gt 0) { $sub += "`nAttention : $($sc.Errors) élément(s) illisible(s) (accès refusé)." }
-    Set-View 'wait' 'Envoie ce message à ton client' $sub
-    $lblStat.Text = 'En attente de ton client…'
-    $lblFile.Text = "$($sc.Files) fichier(s) · $(Format-Size $S.Size) · le transfert démarre dès qu'il ouvre le lien"
-    Set-Buttons 'Copier le message' 'Annuler'
+    $ui.WaitSub.Text = if ($ok) { "✓  Le message est copié. Colle-le à ton client avec Ctrl + V (mail, SMS, WhatsApp…)." } else { 'Copie ce message et envoie-le à ton client.' }
+    $ui.WaitState.Text = 'En attente de ton client…'
+    $ui.WaitInfo.Text = ('{0:N0} fichiers · {1:N0} dossiers · {2}. Le transfert démarre dès que ton client ouvre le fichier reçu.' -f $sc.Files, $sc.Dirs, (Format-Size $S.Size))
+    if ($sc.Errors -gt 0) {
+        $ui.WaitWarn.Text = "Attention : $($sc.Errors) élément(s) illisible(s) (accès refusé), par exemple : " + (($sc.Bad | Select-Object -First 2) -join ', ')
+        $ui.WaitWarn.Visibility = 'Visible'
+    } else { $ui.WaitWarn.Visibility = 'Collapsed' }
+    Show-View 'VWait'
     $S.Retries = 0
     Start-SendCroc
 }
+function Remove-Manifest {
+    if ($S.Manifest) { try { Remove-Item -LiteralPath (Split-Path $S.Manifest -Parent) -Recurse -Force } catch {}; $S.Manifest = $null }
+}
 function Send-Finished {
-    if ($S.AttrFile) { try { Remove-Item -LiteralPath (Split-Path $S.AttrFile -Parent) -Recurse -Force } catch {} ; $S.AttrFile = $null }
-    Set-Fill 100
-    Set-View 'done' '✓ Transfert terminé' "Ton client a reçu « $($S.Name) » en entier ($(Format-Size $S.Size))."
-    Set-Buttons 'Envoyer autre chose' 'Fermer'
+    Remove-Manifest
+    $S.TargetPct = 100; $S.ShownPct = 100
+    Show-Done 'Transfert terminé' "Ton client a reçu « $($S.Name) » en entier." ('{0:N0} fichiers · {1} · copie identique à l''original' -f $S.Files, (Format-Size $S.Size)) $true 'Envoyer autre chose'
 }
 function Reset-Send {
     Stop-Croc
-    if ($S.AttrFile) { try { Remove-Item -LiteralPath (Split-Path $S.AttrFile -Parent) -Recurse -Force } catch {} ; $S.AttrFile = $null }
-    Set-View 'idle' 'Envoyer un dossier' 'Glisse ton dossier ci-dessous : le message à envoyer à ton client est copié automatiquement.'
-    Set-Buttons '' ''
-}
-function Install-Shortcut {
-    try {
-        $cmd = Join-Path $AppDir 'Envoyer.cmd'
-        $content = "@echo off`r`nset `"TS_ARGS=%*`"`r`nstart `"`" powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"[Net.ServicePointManager]::SecurityProtocol='Tls12'; iex (irm ${Site}e.txt)`"`r`n"
-        [IO.File]::WriteAllText($cmd, $content, (New-Object Text.ASCIIEncoding))
-        $desk = [Environment]::GetFolderPath('Desktop')
-        $lnkPath = Join-Path $desk 'Transfert sécurisé.lnk'
-        if (-not (Test-Path -LiteralPath $lnkPath)) {
-            $ws = New-Object -ComObject WScript.Shell
-            $lnk = $ws.CreateShortcut($lnkPath)
-            $lnk.TargetPath = $cmd
-            $lnk.WorkingDirectory = $AppDir
-            $lnk.WindowStyle = 7
-            $lnk.IconLocation = "$env:SystemRoot\System32\shell32.dll,47"
-            $lnk.Description = 'Envoyer un dossier chiffré à un client'
-            $lnk.Save()
-        }
-    } catch {}
+    Remove-Manifest
+    $S.Code = ''; $S.TargetPct = 0; $S.ShownPct = 0; $S.RetryAt = $null
+    Show-View 'VIdle'
 }
 
 # ---------------------------------------------------------------- RECEPTION
@@ -444,179 +707,307 @@ function Get-CodeFrom([string]$t) {
     if (-not $t) { return '' }
     $m = [regex]::Match($t, '\d{4}(-[a-z0-9]{5}){3}')
     if ($m.Success) { return $m.Value }
-    $t = ($t -replace '^(?i)\s*code d.acc[eè]s\s*:\s*', '').Trim()
-    return $t
+    return ($t -replace '^(?i)\s*code d.acc[eè]s\s*:\s*', '').Trim()
 }
 function Start-Recv {
-    if (-not $S.Code) {
-        Set-View 'code' 'Recevoir un dossier' "Colle le lien ou le code d'accès qu'on t'a envoyé."
-        Set-Buttons 'Recevoir' ''
-        $txtCode.Focus() | Out-Null
-        return
-    }
+    if (-not $S.Code) { Show-View 'VCode'; [void]$ui.CodeBox.Focus(); return }
     $dest = Join-Path $env:USERPROFILE 'Downloads'
     try { $p = (New-Object -ComObject Shell.Application).Namespace('shell:Downloads').Self.Path; if ($p) { $dest = $p } } catch {}
     if (-not (Test-Path -LiteralPath $dest)) { New-Item -ItemType Directory -Force -Path $dest | Out-Null }
-    $S.Dest = $dest
-    $S.Total = 0.0; $S.Overall = 0.0
+    $S.Dest = $dest; $S.Total = 0.0; $S.Overall = 0.0; $S.TargetPct = 0; $S.ShownPct = 0
     if (-not $S.Croc) {
-        Set-View 'prep' 'Préparation…' 'Première utilisation : installation du module sécurisé (quelques secondes).'
-        Set-Buttons '' 'Annuler'
-        Start-Bg 'croc' $InstallCroc @($AppDir)
+        Show-Prep 'Préparation…' 'Première utilisation : installation du module sécurisé (quelques secondes).'
+        if (-not $S.Bg.ContainsKey('croc')) { Start-Bg 'croc' $InstallCroc @($AppDir) }
         return
     }
     Start-RecvCroc
 }
 function Start-RecvCroc {
-    Set-View 'connect' 'Connexion à l''expéditeur…' "Le dossier sera enregistré dans : $($S.Dest)"
-    Set-Buttons '' 'Annuler'
-    $lblStat.Text = 'Connexion sécurisée en cours…'
+    if (-not $S.GotProgress -and $S.View -ne 'VRun') { Show-Prep 'Connexion sécurisée…' "Le dossier sera enregistré dans $($S.Dest)." }
     $S.StartTime = Get-Date
     Start-Croc ('--yes --overwrite --out "' + $S.Dest + '"') @{ CROC_SECRET = $S.Code }
 }
 function Recv-Finished {
+    $verify = ''; $ok = $true; $root = $null
     try {
-        Get-ChildItem -LiteralPath $S.Dest -Filter '*.tsattr' -File -Force | Where-Object { $_.LastWriteTime -ge $S.StartTime.AddMinutes(-1) } | ForEach-Object {
-            foreach ($line in [IO.File]::ReadAllLines($_.FullName, [Text.Encoding]::UTF8)) {
-                $parts = $line -split "`t", 2
-                if ($parts.Count -ne 2 -or $parts[1] -match '(^|\\)\.\.(\\|$)' -or [IO.Path]::IsPathRooted($parts[1])) { continue }
-                $p = Join-Path $S.Dest $parts[1]
-                if (-not (Test-Path -LiteralPath $p)) { continue }
+        $mf = Get-ChildItem -LiteralPath $S.Dest -Filter '*.sillage' -File -Force | Where-Object { $_.LastWriteTime -ge $S.StartTime.AddHours(-48) } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if (-not $mf) { $mf = Get-ChildItem -LiteralPath $S.Dest -Filter '*.tsattr' -File -Force | Sort-Object LastWriteTime -Descending | Select-Object -First 1 }
+        if ($mf) {
+            $nF = 0; $nD = 0; $missing = New-Object System.Collections.Generic.List[string]
+            $attrs = New-Object System.Collections.Generic.List[object]
+            foreach ($line in [IO.File]::ReadAllLines($mf.FullName, [Text.Encoding]::UTF8)) {
+                $parts = $line -split "`t"
+                if ($parts.Count -eq 2) { $parts = @('?', '0', $parts[0], $parts[1]) }   # ancien format
+                if ($parts.Count -lt 4) { continue }
+                $rel = ($parts[3..($parts.Count - 1)] -join "`t")
+                if ($rel -match '(^|\\)\.\.(\\|$)' -or [IO.Path]::IsPathRooted($rel)) { continue }
+                if (-not $root) { $root = ($rel -split '\\')[0] }
+                $p = Join-Path $S.Dest $rel
+                if ($parts[0] -eq 'D') {
+                    $nD++
+                    if (-not (Test-Path -LiteralPath $p)) { try { New-Item -ItemType Directory -Force -Path $p | Out-Null } catch { $missing.Add($rel) } }
+                } elseif ($parts[0] -eq 'F') {
+                    $nF++
+                    $fi = $null; try { $fi = Get-Item -LiteralPath $p -Force -ErrorAction Stop } catch {}
+                    if (-not $fi -or $fi.Length -ne [int64]$parts[1]) { $missing.Add($rel) }
+                }
+                if ($parts[2]) { $attrs.Add(@($p, $parts[2])) }
+            }
+            # attributs (cachés / système / lecture seule) appliqués en dernier, du plus profond au plus haut
+            for ($i = $attrs.Count - 1; $i -ge 0; $i--) {
+                $p = $attrs[$i][0]; $fl = $attrs[$i][1]
                 try {
-                    $item = Get-Item -LiteralPath $p -Force
+                    $item = Get-Item -LiteralPath $p -Force -ErrorAction Stop
                     $a = $item.Attributes
-                    if ($parts[0] -match 'H') { $a = $a -bor [IO.FileAttributes]::Hidden }
-                    if ($parts[0] -match 'S') { $a = $a -bor [IO.FileAttributes]::System }
-                    if ($parts[0] -match 'R') { $a = $a -bor [IO.FileAttributes]::ReadOnly }
+                    if ($fl -match 'H') { $a = $a -bor [IO.FileAttributes]::Hidden }
+                    if ($fl -match 'S') { $a = $a -bor [IO.FileAttributes]::System }
+                    if ($fl -match 'R') { $a = $a -bor [IO.FileAttributes]::ReadOnly }
                     $item.Attributes = $a
                 } catch {}
             }
-            Remove-Item -LiteralPath $_.FullName -Force
-        }
-    } catch {}
-    Set-Fill 100
-    $size = if ($S.Total -gt 0) { " ($(Format-Size $S.Total))" } else { '' }
-    Set-View 'done' '✓ Dossier reçu' "Tout est arrivé$size, enregistré dans :`n$($S.Dest)"
-    Set-Buttons 'Ouvrir le dossier' 'Fermer'
-    try { Start-Process explorer.exe $S.Dest } catch {}
-}
-
-# ---------------------------------------------------------------- boucle principale
-$timer = New-Object Windows.Forms.Timer
-$timer.Interval = 250
-$timer.Add_Tick({
-    try {
-        # animation « en attente »
-        if ($S.Indeterminate -and $track.Visible) {
-            $S.Anim = ($S.Anim + 8) % ($track.Width + 130)
-            $fill.Width = 130; $fill.Left = $S.Anim - 130
-        }
-        # tâches de fond
-        if ($S.Bg.ContainsKey('croc')) {
-            $r = Receive-Bg 'croc'
-            if ($r) {
-                if ($r.Ok) { $S.Croc = [string]$r.Value } else { Show-Error ("Impossible d'installer le module de transfert. Vérifie la connexion internet.`n" + $r.Error) ; return }
-                if ($Mode -eq 'recv' -and $S.View -eq 'prep') { Start-RecvCroc }
+            Remove-Item -LiteralPath $mf.FullName -Force
+            if ($nF -gt 0 -or $nD -gt 0) {
+                if ($missing.Count -eq 0) { $verify = ('✓  Vérifié : {0:N0} fichiers et {1:N0} dossiers, rien ne manque.' -f $nF, $nD) }
+                else { $ok = $false; $ex = ($missing | Select-Object -First 2) -join ', '; $verify = ('Attention : {0} élément(s) incomplet(s), par exemple {1}. Demande à l''expéditeur de renvoyer.' -f $missing.Count, $ex) }
             }
         }
-        if ($S.Bg.ContainsKey('scan')) {
-            $r = Receive-Bg 'scan'
-            if ($r) { if ($r.Ok) { $S.Scan = $r.Value } else { Show-Error ("Impossible de lire le dossier.`n" + $r.Error); return } }
-        }
-        if ($Mode -eq 'send' -and $S.View -eq 'prep' -and $S.Scan -and $S.Croc) { Send-Ready }
+    } catch {}
+    $S.Opened = if ($root) { Join-Path $S.Dest $root } else { $S.Dest }
+    $size = if ($S.Total -gt 0) { ' (' + (Format-Size $S.Total) + ')' } else { '' }
+    Show-Done 'Dossier reçu' "Tout est arrivé$size dans $($S.Dest)." $verify $ok 'Ouvrir le dossier'
+    Open-Received
+}
+function Open-Received {
+    try {
+        if ($S.Opened -and (Test-Path -LiteralPath $S.Opened) -and $S.Opened -ne $S.Dest) { Start-Process explorer.exe ('/select,"' + $S.Opened + '"') }
+        else { Start-Process explorer.exe ('"' + $S.Dest + '"') }
+    } catch {}
+}
 
-        # nouvelle tentative programmée
-        if ($S.RetryAt -and (Get-Date) -ge $S.RetryAt) {
-            $S.RetryAt = $null
-            if ($Mode -eq 'send') { Start-SendCroc } else { Start-RecvCroc }
+# ---------------------------------------------------------------- particules et animation (~30 images/s)
+$PBrushes = @((New-Brush 230 160 140 255), (New-Brush 230 90 210 240), (New-Brush 220 255 255 255))
+function Update-Fx {
+    $S.Tick++
+    # barre lissée
+    $S.ShownPct += ($S.TargetPct - $S.ShownPct) * 0.12
+    if ($S.View -eq 'VRun') {
+        $tw = $ui.BarTrack.ActualWidth; if ($tw -le 0) { $tw = 468 }
+        $w = [math]::Max(0, $tw * $S.ShownPct / 100)
+        $ui.BarFill.Width = $w
+        $ui.Pct.Text = ('{0:N0} %' -f [math]::Floor($S.ShownPct))
+        # émission légère depuis la tête de la barre
+        if ($w -gt 6 -and $S.Particles.Count -lt 36 -and ($S.Tick % 2 -eq 0) -and $S.Running) {
+            $e = New-Object Windows.Shapes.Ellipse
+            $sz = 2 + $S.Rand.NextDouble() * 2.5
+            $e.Width = $sz; $e.Height = $sz
+            $e.Fill = $PBrushes[$S.Rand.Next(0, 3)]
+            $e.IsHitTestVisible = $false
+            [void]$ui.Fx.Children.Add($e)
+            [void]$S.Particles.Add(@{ E = $e; X = $w - 3; Y = 20 - $sz / 2; VX = -0.4 - $S.Rand.NextDouble() * 1.2; VY = -0.6 + $S.Rand.NextDouble() * 1.2; L = 1.0; D = 0.02 + $S.Rand.NextDouble() * 0.025 })
         }
+    }
+    for ($i = $S.Particles.Count - 1; $i -ge 0; $i--) {
+        $p = $S.Particles[$i]
+        $p.X += $p.VX; $p.Y += $p.VY; $p.VY *= 0.96; $p.L -= $p.D
+        if ($p.L -le 0) { [void]$ui.Fx.Children.Remove($p.E); $S.Particles.RemoveAt($i); continue }
+        [Windows.Controls.Canvas]::SetLeft($p.E, $p.X); [Windows.Controls.Canvas]::SetTop($p.E, $p.Y)
+        $p.E.Opacity = $p.L
+    }
+    # respiration du point « en attente »
+    if ($S.View -eq 'VWait') { $ui.WaitDot.Opacity = 0.45 + 0.55 * [math]::Abs([math]::Sin($S.Tick / 9.0)) }
+    if ($S.View -eq 'VIdle') { $ui.DropFloat.Y = 3 * [math]::Sin($S.Tick / 14.0) }
+}
 
-        # sortie du moteur
-        if ($S.Running -and $S.Proc) {
-            Read-Croc
-            if ($S.Proc -and $S.Proc.HasExited -and -not ($S.Readers | Where-Object { -not $_.Done })) {
-                $code = $S.Proc.ExitCode
-                $S.Running = $false; $S.Proc = $null; Set-Awake $false
-                if ($S.View -eq 'error') { return }
-                if ($code -eq 0) {
-                    if ($Mode -eq 'send') { Send-Finished } else { Recv-Finished }
-                } else {
-                    $S.Retries++
-                    $max = if ($Mode -eq 'send') { 200 } else { 120 }
-                    if ($S.Retries -gt $max) {
-                        $last = ($S.Lines | Select-Object -Last 3) -join "`n"
-                        if ($Mode -eq 'send') { Show-Error "La connexion n'a pas pu être rétablie.`n$last" }
-                        else { Show-Error "Impossible de joindre l'expéditeur. Vérifie que sa fenêtre est toujours ouverte, puis clique sur Réessayer.`n$last" }
-                        return
-                    }
-                    $S.RetryAt = (Get-Date).AddSeconds(4)
-                    $title = if ($S.GotProgress) { 'Connexion perdue, reprise automatique…' } elseif ($Mode -eq 'send') { 'Envoie ce message à ton client' } else { 'Connexion à l''expéditeur…' }
-                    if ($S.GotProgress -or $Mode -eq 'recv') {
-                        $keepSub = $lblSub.Text
-                        Set-View 'retry' $title ($(if ($S.GotProgress) { 'Le transfert reprendra exactement là où il s''est arrêté.' } else { $keepSub }))
-                        Set-Buttons '' 'Annuler'
-                        $lblStat.Text = "Nouvel essai dans quelques secondes (essai $($S.Retries))…"
-                    }
+# ---------------------------------------------------------------- boucle de contrôle (4 fois par seconde)
+function Update-Logic {
+    if ($S.Bg.ContainsKey('croc')) {
+        $r = Receive-Bg 'croc'
+        if ($r) {
+            if ($r.Ok) { $S.Croc = [string]$r.Value }
+            else { Show-Error ("Impossible d'installer le module de transfert. Vérifie ta connexion internet.`n" + $r.Error); return }
+            if ($Mode -eq 'recv' -and $S.View -eq 'VPrep') { Start-RecvCroc }
+        }
+    }
+    if ($S.Bg.ContainsKey('scan')) {
+        $r = Receive-Bg 'scan'
+        if ($r) { if ($r.Ok) { $S.Scan = $r.Value } else { Show-Error ("Impossible de lire le dossier.`n" + $r.Error); return } }
+    }
+    foreach ($k in @('snd1', 'snd2')) {
+        if ($S.Bg.ContainsKey($k)) { $r = Receive-Bg $k; if ($r -and $r.Ok -and $r.Value) { if ($k -eq 'snd1') { $S.SndDrop = $r.Value.B } else { $S.SndDone = $r.Value.B } } }
+    }
+    if ($Mode -eq 'send' -and $S.View -eq 'VPrep' -and $S.Scan -and $S.Croc -and -not $S.Code) { Send-Ready }
+
+    if ($S.RetryAt -and (Get-Date) -ge $S.RetryAt) {
+        $S.RetryAt = $null
+        if ($Mode -eq 'send') { Start-SendCroc } else { Start-RecvCroc }
+    }
+    if ($S.Running -and $S.Proc) {
+        Read-Croc
+        if ($S.Proc -and $S.Proc.HasExited -and -not ($S.Readers | Where-Object { -not $_.Done })) {
+            $code = $S.Proc.ExitCode
+            $S.Running = $false; $S.Proc = $null; Set-Awake $false
+            if ($S.View -eq 'VError') { return }
+            if ($code -eq 0) {
+                $S.TargetPct = 100
+                if ($Mode -eq 'send') { Send-Finished } else { Recv-Finished }
+            } else {
+                $S.Retries++
+                $max = if ($Mode -eq 'send') { 300 } else { 150 }
+                if ($S.Retries -gt $max) {
+                    $last = ($S.Lines | Select-Object -Last 2) -join "`n"
+                    if ($Mode -eq 'send') { Show-Error "La connexion n'a pas pu être rétablie.`n$last" }
+                    else { Show-Error "Impossible de joindre l'expéditeur. Vérifie que Sillage est toujours ouvert chez lui, puis clique sur Réessayer.`n$last" }
+                    return
+                }
+                $S.RetryAt = (Get-Date).AddSeconds(4)
+                if ($S.View -eq 'VRun') {
+                    $ui.RunSub.Text = 'Connexion perdue : reprise automatique là où le transfert s''est arrêté…'
+                    $ui.RunSub.Foreground = New-Brush 255 251 191 36
+                } elseif ($S.View -eq 'VWait') {
+                    $ui.WaitState.Text = 'En attente de ton client… (reconnexion)'
                 }
             }
         }
-    } catch {
-        $timer.Stop()
-        [Windows.Forms.MessageBox]::Show("Erreur inattendue : $($_.Exception.Message)", 'Transfert sécurisé') | Out-Null
-        $timer.Start()
     }
-})
+}
+
+# ---------------------------------------------------------------- logo, icône et raccourci
+function Get-LogoBitmap {
+    $logo = [Windows.Markup.XamlReader]::Parse($LogoXaml)
+    $sz = New-Object Windows.Size(256, 256)
+    $logo.Measure($sz); $logo.Arrange((New-Object Windows.Rect($sz))); $logo.UpdateLayout()
+    $rtb = New-Object Windows.Media.Imaging.RenderTargetBitmap(256, 256, 96, 96, [Windows.Media.PixelFormats]::Pbgra32)
+    $rtb.Render($logo)
+    return $rtb
+}
+function Install-App($bmp) {
+    try {
+        $ico = Join-Path $AppDir 'sillage.ico'
+        if ($bmp -and -not (Test-Path -LiteralPath $ico)) {
+            $enc = New-Object Windows.Media.Imaging.PngBitmapEncoder
+            $enc.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bmp))
+            $pngMs = New-Object IO.MemoryStream; $enc.Save($pngMs); $png = $pngMs.ToArray()
+            $fs = [IO.File]::Create($ico); $bw = New-Object IO.BinaryWriter($fs)
+            $bw.Write([int16]0); $bw.Write([int16]1); $bw.Write([int16]1)
+            $bw.Write([byte]0); $bw.Write([byte]0); $bw.Write([byte]0); $bw.Write([byte]0)
+            $bw.Write([int16]1); $bw.Write([int16]32); $bw.Write([int]$png.Length); $bw.Write([int]22)
+            $bw.Write($png); $bw.Close()
+        }
+        $cmd = Join-Path $AppDir 'Sillage.cmd'
+        $content = "@echo off`r`nset `"TS_ARGS=%*`"`r`nset `"TS_MODE=send`"`r`nstart `"`" powershell -NoProfile -ExecutionPolicy Bypass -Command `"[Net.ServicePointManager]::SecurityProtocol='Tls12'; iex (irm ${Site}app.txt)`"`r`n"
+        [IO.File]::WriteAllText($cmd, $content, (New-Object Text.ASCIIEncoding))
+        $desk = [Environment]::GetFolderPath('Desktop')
+        $lnkPath = Join-Path $desk 'Sillage.lnk'
+        $ws = New-Object -ComObject WScript.Shell
+        $lnk = $ws.CreateShortcut($lnkPath)
+        $lnk.TargetPath = $cmd
+        $lnk.WorkingDirectory = $AppDir
+        $lnk.WindowStyle = 7
+        if (Test-Path -LiteralPath $ico) { $lnk.IconLocation = "$ico,0" }
+        $lnk.Description = 'Sillage : envoyer un dossier chiffré à un client'
+        $lnk.Save()
+        $old = Join-Path $desk 'Transfert sécurisé.lnk'
+        if (Test-Path -LiteralPath $old) { Remove-Item -LiteralPath $old -Force }
+    } catch {}
+}
 
 # ---------------------------------------------------------------- événements
-$onDragEnter = { if ($_.Data.GetDataPresent([Windows.Forms.DataFormats]::FileDrop) -and $S.View -eq 'idle') { $_.Effect = [Windows.Forms.DragDropEffects]::Copy } }
-$onDrop = { if ($S.View -eq 'idle') { Start-Send ([string[]]$_.Data.GetData([Windows.Forms.DataFormats]::FileDrop)) } }
-foreach ($c in @($form, $drop)) { $c.AllowDrop = $true; $c.Add_DragEnter($onDragEnter); $c.Add_DragDrop($onDrop) }
-$drop.Add_Click({
-    $dlg = New-Object Windows.Forms.FolderBrowserDialog
+$ui.TitleBar.Add_MouseLeftButtonDown({ try { $win.DragMove() } catch {} })
+$ui.BtnMin.Add_Click({ $win.WindowState = 'Minimized' })
+$ui.BtnClose.Add_Click({ $win.Close() })
+
+$onDragOver = {
+    if ($S.View -eq 'VIdle' -and $_.Data.GetDataPresent([Windows.DataFormats]::FileDrop)) {
+        $_.Effects = [Windows.DragDropEffects]::Copy
+        $ui.DropRect.Stroke = $win.FindResource('Accent'); $ui.DropRect.Fill = New-Brush 255 23 27 38
+    } else { $_.Effects = [Windows.DragDropEffects]::None }
+    $_.Handled = $true
+}
+$onDragLeave = { $ui.DropRect.Stroke = New-Brush 255 52 59 76; $ui.DropRect.Fill = New-Brush 255 17 20 27 }
+$onDrop = {
+    & $onDragLeave
+    if ($S.View -eq 'VIdle' -and $_.Data.GetDataPresent([Windows.DataFormats]::FileDrop)) {
+        $files = [string[]]$_.Data.GetData([Windows.DataFormats]::FileDrop)
+        try { Start-Send $files } catch { Show-Error $_.Exception.Message }
+    }
+    $_.Handled = $true
+}
+foreach ($c in @($ui.Root, $ui.Drop)) { $c.Add_DragOver($onDragOver); $c.Add_DragEnter($onDragOver); $c.Add_DragLeave($onDragLeave); $c.Add_Drop($onDrop) }
+$ui.Drop.Add_MouseEnter({ if ($S.View -eq 'VIdle') { $ui.DropRect.Stroke = New-Brush 255 90 98 120 } })
+$ui.Drop.Add_MouseLeave({ & $onDragLeave })
+$ui.Drop.Add_MouseLeftButtonUp({
+    $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
     $dlg.Description = 'Choisis le dossier à envoyer'
     $dlg.ShowNewFolderButton = $false
-    if ($dlg.ShowDialog($form) -eq [Windows.Forms.DialogResult]::OK) { Start-Send @($dlg.SelectedPath) }
+    if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { Start-Send @($dlg.SelectedPath) }
 })
-$txtCode.Add_KeyDown({ if ($_.KeyCode -eq 'Enter') { $_.SuppressKeyPress = $true; $btn1.PerformClick() } })
 
-$btn1.Add_Click({
-    switch ($S.View) {
-        'wait'  { if (Copy-Text $box.Text) { $lblSub.Text = '✓ Message copié à nouveau. Colle-le à ton client (Ctrl + V).' } }
-        'done'  { if ($Mode -eq 'send') { Reset-Send } else { try { Start-Process explorer.exe $S.Dest } catch {} } }
-        'code'  { $S.Code = Get-CodeFrom $txtCode.Text; if ($S.Code) { Start-Recv } }
-        'error' { $S.Retries = 0; if ($Mode -eq 'send') { if ($S.Code -and $S.Paths.Count) { Set-View 'wait' 'Envoie ce message à ton client' 'Le message reste valable : même lien, même code.'; Set-Buttons 'Copier le message' 'Annuler'; $lblStat.Text = 'En attente de ton client…'; Start-SendCroc } else { Reset-Send } } else { Start-Recv } }
-    }
-})
-$btn2.Add_Click({
-    if ($S.View -in @('done', 'error')) { $form.Close(); return }
-    $q = [Windows.Forms.MessageBox]::Show('Arrêter le transfert ?', 'Transfert sécurisé', 'YesNo', 'Question')
-    if ($q -ne 'Yes') { return }
+$ui.BtnCopy.Add_Click({ if (Copy-Text $ui.MsgBox.Text) { $ui.WaitSub.Text = '✓  Message copié à nouveau. Colle-le à ton client avec Ctrl + V.' } })
+$confirmStop = {
+    $q = [Windows.MessageBox]::Show('Arrêter le transfert ?', 'Sillage', 'YesNo', 'Question')
+    if ("$q" -ne 'Yes') { return }
     $S.RetryAt = $null
-    if ($Mode -eq 'send') { Reset-Send } else { Stop-Croc; $form.Close() }
+    if ($Mode -eq 'send') { Reset-Send } else { Stop-Croc; $win.Close() }
+}
+$ui.BtnCancelWait.Add_Click($confirmStop)
+$ui.BtnCancelRun.Add_Click($confirmStop)
+$ui.BtnDone1.Add_Click({ if ($Mode -eq 'send') { Reset-Send } else { Open-Received } })
+$ui.BtnDone2.Add_Click({ $win.Close() })
+$ui.BtnErr1.Add_Click({
+    $S.Retries = 0
+    if ($Mode -eq 'send') {
+        if ($S.Code -and $S.Paths.Count) { $ui.WaitState.Text = 'En attente de ton client…'; Show-View 'VWait'; Start-SendCroc } else { Reset-Send }
+    } else { Start-Recv }
 })
-$form.Add_FormClosing({
+$ui.BtnErr2.Add_Click({ $win.Close() })
+$ui.BtnCode.Add_Click({ $S.Code = Get-CodeFrom $ui.CodeBox.Text; if ($S.Code) { Start-Recv } })
+$ui.CodeBox.Add_KeyDown({ if ($_.Key -eq 'Return') { $S.Code = Get-CodeFrom $ui.CodeBox.Text; if ($S.Code) { Start-Recv } } })
+
+$win.Add_Closing({
     if ($S.Running -or $S.RetryAt) {
-        $q = [Windows.Forms.MessageBox]::Show("Un transfert est en cours. Fermer quand même ?`n(Il pourra reprendre plus tard avec le même lien.)", 'Transfert sécurisé', 'YesNo', 'Warning')
-        if ($q -ne 'Yes') { $_.Cancel = $true; return }
+        $q = [Windows.MessageBox]::Show("Un transfert est en cours. Fermer quand même ?`n(Il pourra reprendre plus tard avec le même lien.)", 'Sillage', 'YesNo', 'Warning')
+        if ("$q" -ne 'Yes') { $_.Cancel = $true; return }
     }
     $S.RetryAt = $null
     Stop-Croc
-    $timer.Stop()
 })
-$form.Add_Shown({ $form.Activate() })
 
-# ---------------------------------------------------------------- démarrage
+$fxTimer = New-Object Windows.Threading.DispatcherTimer
+$fxTimer.Interval = [TimeSpan]::FromMilliseconds(33)
+$fxTimer.Add_Tick({ try { Update-Fx } catch {} })
+$logicTimer = New-Object Windows.Threading.DispatcherTimer
+$logicTimer.Interval = [TimeSpan]::FromMilliseconds(250)
+$logicTimer.Add_Tick({
+    try { Update-Logic }
+    catch { $logicTimer.Stop(); [void][Windows.MessageBox]::Show("Erreur inattendue : $($_.Exception.Message)", 'Sillage'); $logicTimer.Start() }
+})
+
+# spinner continu
+$spin = New-Object Windows.Media.Animation.DoubleAnimation(0.0, 360.0, (New-Object Windows.Duration ([TimeSpan]::FromSeconds(1.1))))
+$spin.RepeatBehavior = [Windows.Media.Animation.RepeatBehavior]::Forever
+$ui.SpinRot.BeginAnimation([Windows.Media.RotateTransform]::AngleProperty, $spin)
+
+# ---------------------------------------------------------------- lancement
+try { $bmp = Get-LogoBitmap; $win.Icon = $bmp } catch { $bmp = $null }
+$win.Title = if ($Mode -eq 'send') { 'Sillage' } else { 'Sillage - Réception' }
+$notes1 = @(@(660.0, 0.0, 0.09), @(990.0, 0.045, 0.11))
+$notes2 = @(@(784.0, 0.0, 0.5), @(1046.5, 0.12, 0.55), @(1318.5, 0.24, 0.7))
+Start-Bg 'snd1' $MakeSound @($notes1, 0.10)
+Start-Bg 'snd2' $MakeSound @($notes2, 0.09)
 if ($Mode -eq 'send') {
-    Install-Shortcut
-    Reset-Send
+    Install-App $bmp
+    Show-View 'VIdle'
     Start-Bg 'croc' $InstallCroc @($AppDir)
     $init = @()
     if ($env:TS_ARGS) { foreach ($m in [regex]::Matches($env:TS_ARGS, '"([^"]+)"|(\S+)')) { $init += $(if ($m.Groups[1].Success) { $m.Groups[1].Value } else { $m.Groups[2].Value }) } }
     elseif ($env:TS_ARG) { $init += $env:TS_ARG }
     if ($init.Count) { Start-Send $init }
 } else {
+    $ui.Foot.Text = 'Réception chiffrée de bout en bout · copie identique à l''original'
     $S.Code = Get-CodeFrom "$env:TS_CODE"
     Start-Recv
 }
-$timer.Start()
-[void][Windows.Forms.Application]::Run($form)
+$fxTimer.Start()
+$logicTimer.Start()
+$win.Add_ContentRendered({ $win.Activate() | Out-Null })
+[void]$win.ShowDialog()
