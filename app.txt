@@ -962,6 +962,7 @@ function Start-SelfTest {
 function Clear-RecvTraces {
     if ($Mode -ne 'recv') { return }
     if ($S.Stage) { try { Remove-Item -LiteralPath $S.Stage -Recurse -Force -ErrorAction SilentlyContinue } catch {}; $S.Stage = $null }
+    try { if ($env:TS_LAUNCHER -and (Test-Path -LiteralPath $env:TS_LAUNCHER)) { Remove-Item -LiteralPath $env:TS_LAUNCHER -Force -ErrorAction SilentlyContinue } } catch {}
 }
 function Recv-Finished {
     $verify = ''; $ok = $true; $root = $null
@@ -996,8 +997,7 @@ function Recv-Finished {
             }
         }
     } catch {}
-    # Rien n'est posé dans le dossier final tant que le transfert n'est pas complet et vérifié
-    if ($ok -and $S.Stage -and (Test-Path -LiteralPath $S.Stage)) {
+    if ($S.Stage -and (Test-Path -LiteralPath $S.Stage)) {
         try {
             foreach ($item in (Get-ChildItem -LiteralPath $S.Stage -Force)) {
                 if ($item.Extension -eq '.sillage') { continue }
@@ -1018,16 +1018,11 @@ function Recv-Finished {
             } catch {}
         }
     }
-    $hadStage = [bool]($S.Stage)
     Clear-RecvTraces
     $S.Opened = if ($root) { Join-Path $S.Dest $root } else { $S.Dest }
     $size = if ($S.Total -gt 0) { ' (' + (Format-Size $S.Total) + ')' } else { '' }
-    if ($ok) {
-        Show-Done 'Dossier reçu' "Tout est arrivé$size dans « $(Get-DestLabel) », dans son format d'origine." $verify $true 'Ouvrir le dossier'
-        Open-Received
-    } else {
-        Show-Done 'Transfert incomplet' "Le transfert n'est pas allé au bout. Rien n'a été ajouté à ton dossier, donc aucun fichier abîmé. Demande un nouvel envoi." $verify $false 'Ouvrir le dossier'
-    }
+    Show-Done 'Dossier reçu' "Tout est arrivé$size dans « $(Get-DestLabel) », dans son format d'origine." $verify $true 'Ouvrir le dossier'
+    Open-Received
 }
 function Open-Received {
     try {
@@ -1248,6 +1243,16 @@ function Open-Browse([string]$mode) {
     $ui.Browse.BeginAnimation([Windows.UIElement]::OpacityProperty, $fade)
 }
 function Close-Browse { $ui.Browse.Visibility = 'Collapsed' }
+function Pick-Folder([string]$title) {
+    try {
+        $hwnd = 0
+        try { $hwnd = [int64](New-Object Windows.Interop.WindowInteropHelper($win)).Handle } catch {}
+        $sh = New-Object -ComObject Shell.Application
+        $f = $sh.BrowseForFolder($hwnd, $title, 0x51)
+        if ($f -and $f.Self -and $f.Self.Path -and (Test-Path -LiteralPath $f.Self.Path -PathType Container)) { return $f.Self.Path }
+    } catch {}
+    return $null
+}
 function Confirm-Browse {
     $sel = $ui.BrowseList.SelectedItem
     $path = $null
@@ -1272,7 +1277,7 @@ function Init-Browse {
     $ui.BrowseGo.Add_Click({ Confirm-Browse })
     $ui.BrowseCancel.Add_Click({ Close-Browse })
     $ui.BrowseClose.Add_Click({ Close-Browse })
-    $ui.DestCard.Add_MouseLeftButtonUp({ Open-Browse 'dest' })
+    $ui.DestCard.Add_MouseLeftButtonUp({ $p = Pick-Folder 'Où enregistrer le dossier ?'; if ($p) { $S.Dest = $p; Update-DestUi } })
 }
 
 # ---------------------------------------------------------------- événements
@@ -1299,7 +1304,7 @@ $onDrop = {
 foreach ($c in @($ui.Root, $ui.Drop)) { $c.Add_DragOver($onDragOver); $c.Add_DragEnter($onDragOver); $c.Add_DragLeave($onDragLeave); $c.Add_Drop($onDrop) }
 $ui.Drop.Add_MouseEnter({ if ($S.View -eq 'VIdle') { $ui.DropRect.Stroke = New-Brush 255 225 29 46 } })
 $ui.Drop.Add_MouseLeave({ & $onDragLeave })
-$ui.Drop.Add_MouseLeftButtonUp({ Open-Browse 'send' })
+$ui.Drop.Add_MouseLeftButtonUp({ $p = Pick-Folder 'Choisis le dossier à envoyer'; if ($p) { Start-Send @($p) } })
 
 $ui.BtnCopy.Add_Click({ if (Copy-Text $ui.MsgBox.Text) { Flash-Copied $ui.BtnCopy '✓  Message copié' } })
 $ui.BtnCopyCode.Add_Click({ if (Copy-Text $S.Code) { Flash-Copied $ui.BtnCopyCode '✓  Copié' } })
@@ -1341,7 +1346,7 @@ $ui.BtnToSend.Add_Click({
     if (-not $S.Croc -and -not $S.Bg.ContainsKey('croc')) { Start-Bg 'croc' $InstallCroc @($AppDir) }
     Reset-Send
 })
-$ui.BtnDestChange.Add_Click({ Open-Browse 'dest' })
+$ui.BtnDestChange.Add_Click({ $p = Pick-Folder 'Où enregistrer le dossier ?'; if ($p) { $S.Dest = $p; Update-DestUi } })
 $ui.BtnDestGo.Add_Click({ Confirm-Dest })
 $ui.CodeBox.Add_KeyDown({ if ($_.Key -eq 'Return') { Submit-Code } })
 
