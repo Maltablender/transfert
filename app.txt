@@ -292,6 +292,12 @@ $Xaml = @'
               </StackPanel>
               <TextBlock x:Name="WaitInfo" FontSize="12.5" Foreground="#808080" Margin="19,6,0,0" TextWrapping="Wrap"/>
               <TextBlock x:Name="WaitWarn" FontSize="12.5" Foreground="#FBBF24" Margin="19,6,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+              <StackPanel x:Name="PrepBarBox" Visibility="Collapsed" Margin="19,12,0,0">
+                <TextBlock x:Name="PrepBarLbl" FontSize="12" Foreground="#C4C4CA"/>
+                <Border Width="400" Height="6" CornerRadius="3" Background="#242428" Margin="0,7,0,0" HorizontalAlignment="Left">
+                  <Border x:Name="PrepBarFill" Height="6" CornerRadius="3" Background="{StaticResource Accent}" HorizontalAlignment="Left" Width="0"/>
+                </Border>
+              </StackPanel>
             </StackPanel>
           </Border>
           <Button x:Name="BtnSelfTest" Style="{StaticResource LinkBtn}" Content="M'envoyer ce dossier à moi-même (test sur ce PC)  →" Margin="0,12,0,0"/>
@@ -468,7 +474,7 @@ try {
     $win = [Windows.Markup.XamlReader]::Parse($Xaml)
     $ui = @{}
     foreach ($n in 'Root','TitleBar','BtnMin','BtnClose','VIdle','Drop','DropRect','DropFloat','VPrep','SpinRot','PrepTitle','PrepSub','PrepSweep','PrepSweepT',
-                   'VWait','WaitSub','MsgBox','BtnCopy','BtnCopyCode','CodeText','BtnCancelWait','WaitDot','WaitState','WaitInfo','WaitWarn','BtnSelfTest',
+                   'VWait','WaitSub','MsgBox','BtnCopy','BtnCopyCode','CodeText','BtnCancelWait','WaitDot','WaitState','WaitInfo','WaitWarn','PrepBarBox','PrepBarLbl','PrepBarFill','BtnSelfTest',
                    'VRun','RunTitle','RunSub','Pct','BarTrack','BarFill','Fx','StDone','StSpeed','StEta','CurFile','BtnCancelRun',
                    'VDone','CheckScale','DoneTitle','DoneSub','DoneVerifyBox','DoneVerify','BtnDone1','BtnDone2',
                    'VError','ErrTitle','ErrSub','BtnErr1','BtnErr2','VCode','CodeBox','BtnCode','Foot',
@@ -678,6 +684,7 @@ function Show-Run {
     if ($Mode -eq 'send') { $ui.RunTitle.Text = 'Envoi en cours'; $ui.RunSub.Text = "Ton client reçoit « $($S.Name) ». Laisse Onde ouvert jusqu'à la fin." }
     else { $ui.RunTitle.Text = 'Réception en cours'; $ui.RunSub.Text = "Enregistrement dans « $(Get-DestLabel) ». Laisse cette fenêtre ouverte jusqu'à la fin." }
     $ui.RunSub.Foreground = New-Brush 255 140 140 140
+    try { $ui.PrepBarBox.Visibility = 'Collapsed' } catch {}
     Show-View 'VRun'
 }
 
@@ -746,7 +753,13 @@ function Read-Line([string]$l) {
         $cur = ConvertTo-Bytes $Matches[3] $Matches[5]; $max = ConvertTo-Bytes $Matches[4] $Matches[5]
         if ($Matches[6]) { $S.Speed = ConvertTo-Bytes $Matches[6] $Matches[7] }
         if ($name -match '(?i)hashing|hash\b|calcul') {
-            if ($S.GotProgress -and $S.View -eq 'VRun') { $ui.CurFile.Text = 'Vérification des fichiers…'; if ($S.Speed -gt 0) { $ui.StSpeed.Text = (Format-Size $S.Speed) + '/s' } }
+            if (-not $S.GotProgress -and $Mode -eq 'send' -and $S.View -eq 'VWait') {
+                $ui.PrepBarBox.Visibility = 'Visible'
+                $ui.PrepBarLbl.Text = if ($max -gt 0) { "Préparation du dossier… $pct %  (" + (Format-Size $cur) + ' / ' + (Format-Size $max) + ')' } else { "Préparation du dossier… $pct %" }
+                $ui.PrepBarFill.Width = [math]::Max(0, [math]::Min(400, 400 * $pct / 100))
+            } elseif ($S.GotProgress -and $S.View -eq 'VRun') {
+                $ui.CurFile.Text = 'Vérification des fichiers…'; if ($S.Speed -gt 0) { $ui.StSpeed.Text = (Format-Size $S.Speed) + '/s' }
+            }
             return
         }
         if ($name -ne $S.CurName -or $pct -lt ($S.LastPct - 5)) {
@@ -838,6 +851,7 @@ function Send-Ready {
     $ui.WaitSub.Text = if ($ok) { 'Message copié : colle-le à ton client (Ctrl + V). Il peut recevoir dès maintenant.' } else { 'Copie ce message et donne-le à ton client.' }
     $ui.WaitState.Text = 'Prêt · ton client peut recevoir maintenant'
     try { $ui.WaitDot.Fill = New-Brush 255 52 211 153 } catch {}
+    try { $ui.PrepBarBox.Visibility = 'Collapsed'; $ui.PrepBarFill.Width = 0 } catch {}
     $ui.WaitInfo.Text = ('{0:N0} fichiers · {1:N0} dossiers · {2}. C''est prêt : le gros transfert se lance (avec barre de progression ici) dès que ton client ouvre le lien.' -f $sc.Files, $sc.Dirs, (Format-Size $S.Size))
     if ($sc.Errors -gt 0) {
         $ui.WaitWarn.Text = "Attention : $($sc.Errors) élément(s) illisible(s) (accès refusé), par exemple : " + (($sc.Bad | Select-Object -First 2) -join ', ')
