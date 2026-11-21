@@ -370,21 +370,21 @@ $Xaml = @'
         <!-- CHOIX DU DOSSIER (réception) -->
         <StackPanel x:Name="VDest" Visibility="Collapsed">
           <TextBlock Style="{StaticResource H1}" Text="Où enregistrer le dossier ?"/>
-          <TextBlock Style="{StaticResource Sub}" Text="Choisis où ranger le dossier sur ton PC. Il arrivera avec son nom, à l'identique."/>
-          <WrapPanel x:Name="DestQuick" Margin="0,20,0,0"/>
-          <Border CornerRadius="16" Background="#E6111113" BorderBrush="#26262A" BorderThickness="1" Margin="0,8,0,0" Padding="16,14">
+          <TextBlock Style="{StaticResource Sub}" Text="Choisis l'emplacement sur ton PC. Ton fichier arrive dans son format d'origine, à l'identique."/>
+          <Border x:Name="DestCard" CornerRadius="16" Background="#E6111113" BorderBrush="#2E2E33" BorderThickness="1" Margin="0,26,0,0" Padding="18,16" Cursor="Hand">
             <Grid>
               <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-              <Grid Width="44" Height="44" VerticalAlignment="Center">
-                <Ellipse Fill="#1E1E1E"/>
-                <Path Data="M0,3 A2,2 0 0 1 2,1 L6,1 L8,3 L16,3 A2,2 0 0 1 18,5 L18,12 A2,2 0 0 1 16,14 L2,14 A2,2 0 0 1 0,12 Z" Fill="{StaticResource Accent}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              <Grid Width="46" Height="46" VerticalAlignment="Center">
+                <Ellipse Fill="#2A0E12"/>
+                <Path Data="M0,3 A2,2 0 0 1 2,1 L6,1 L8,3 L16,3 A2,2 0 0 1 18,5 L18,12 A2,2 0 0 1 16,14 L2,14 A2,2 0 0 1 0,12 Z" Fill="{StaticResource Accent}" Width="22" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
               </Grid>
-              <StackPanel Grid.Column="1" Margin="14,0,10,0" VerticalAlignment="Center">
-                <TextBlock x:Name="DestName" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+              <StackPanel Grid.Column="1" Margin="15,0,10,0" VerticalAlignment="Center">
+                <TextBlock Text="Emplacement" FontSize="11.5" Foreground="#7A7A80"/>
+                <TextBlock x:Name="DestName" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
                 <TextBlock x:Name="DestPath" FontSize="12" Foreground="#808080" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
                 <TextBlock x:Name="DestFree" FontSize="12" Foreground="#34D399" Margin="0,3,0,0"/>
               </StackPanel>
-              <Button x:Name="BtnDestChange" Grid.Column="2" Style="{StaticResource Ghost}" Height="40" Width="112" FontSize="13" Content="Autre…" VerticalAlignment="Center"/>
+              <Button x:Name="BtnDestChange" Grid.Column="2" Style="{StaticResource Ghost}" Height="42" Width="132" FontSize="13.5" Content="Parcourir…" VerticalAlignment="Center"/>
             </Grid>
           </Border>
           <Button x:Name="BtnDestGo" Style="{StaticResource Primary}" Content="Recevoir ici" Margin="0,18,0,0"/>
@@ -466,7 +466,7 @@ try {
                    'VRun','RunTitle','RunSub','Pct','BarTrack','BarFill','Fx','StDone','StSpeed','StEta','CurFile','BtnCancelRun',
                    'VDone','CheckScale','DoneTitle','DoneSub','DoneVerifyBox','DoneVerify','BtnDone1','BtnDone2',
                    'VError','ErrTitle','ErrSub','BtnErr1','BtnErr2','VCode','CodeBox','BtnCode','Foot',
-                   'VDest','DestName','DestPath','DestFree','BtnDestChange','BtnDestGo','DestErr','BtnToRecv','BtnToSend','CodeErr',
+                   'VDest','DestName','DestPath','DestFree','BtnDestChange','BtnDestGo','DestErr','DestCard','BtnToRecv','BtnToSend','CodeErr',
                    'Browse','BrowseTitle','BrowsePath','BrowseClose','BrowseUp','BrowseQuick','BrowseList','BrowseGo','BrowseCancel') {
         $ui[$n] = $win.FindName($n)
         if ($null -eq $ui[$n]) { throw "Élément d'interface manquant : $n" }
@@ -880,22 +880,6 @@ function Update-DestUi {
     $ui.DestFree.Text = ''
     try { $drv = (Get-Item -LiteralPath $S.Dest).PSDrive; if ($drv -and $drv.Free) { $ui.DestFree.Text = 'Espace libre : ' + (Format-Size $drv.Free) } } catch {}
     $ui.DestErr.Visibility = 'Collapsed'
-    try {
-        $wp = $win.FindName('DestQuick')
-        if ($wp.Children.Count -eq 0) {
-            foreach ($k in (Get-KnownDirs)) {
-                $b = New-Object Windows.Controls.Button
-                $b.Style = $win.FindResource('Ghost'); $b.Height = 38; $b.MinWidth = 96; $b.FontSize = 13; $b.Margin = '0,0,8,8'
-                $b.Content = $k.L; $b.Tag = $k.P
-                $b.Add_Click({ param($sender, $e) $S.Dest = [string]$sender.Tag; Update-DestUi })
-                [void]$wp.Children.Add($b)
-            }
-        }
-        foreach ($b in $wp.Children) {
-            if (([string]$b.Tag).TrimEnd('\') -ieq $S.Dest.TrimEnd('\')) { $b.Background = New-Brush 255 58 14 20; $b.Foreground = New-Brush 255 255 255 255 }
-            else { $b.ClearValue([Windows.Controls.Control]::BackgroundProperty); $b.ClearValue([Windows.Controls.Control]::ForegroundProperty) }
-        }
-    } catch {}
 }
 function Show-DestChoice {
     if (-not $S.Dest -or -not (Test-Path -LiteralPath $S.Dest)) { $S.Dest = Get-DefaultDest }
@@ -1249,6 +1233,7 @@ function Init-Browse {
     $ui.BrowseGo.Add_Click({ Confirm-Browse })
     $ui.BrowseCancel.Add_Click({ Close-Browse })
     $ui.BrowseClose.Add_Click({ Close-Browse })
+    $ui.DestCard.Add_MouseLeftButtonUp({ Open-Browse 'dest' })
 }
 
 # ---------------------------------------------------------------- événements

