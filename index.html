@@ -46,7 +46,7 @@ footer{color:var(--mute);font-size:14px;margin-top:40px}
 <main class="wrap">
   <div class="lock"><i></i>Transfert chiffré de bout en bout</div>
   <h1>On t'a envoyé un dossier</h1>
-  <p class="lead">Trois étapes sur un PC Windows, une minute en tout. Tu as besoin du code d'accès qu'on t'a envoyé dans un message séparé.</p>
+  <p class="lead" id="lead">Trois gestes sur un PC Windows : le téléchargement démarre tout seul.</p>
 
   <ol>
     <li class="step"><span class="n">1</span><div>
@@ -58,35 +58,46 @@ footer{color:var(--mute);font-size:14px;margin-top:40px}
       <p>Une fenêtre noire s'ouvre. La première fois, elle installe le module de transfert en quelques secondes.</p>
     </div></li>
     <li class="step"><span class="n">3</span><div>
-      <h3>Colle ton code d'accès et choisis où enregistrer</h3>
-      <p>Le téléchargement démarre. Laisse la fenêtre ouverte jusqu'au message « TERMINÉ » : le dossier s'ouvre tout seul. Si Windows demande une autorisation réseau, clique « Autoriser ».</p>
+      <h3>C'est parti : laisse la fenêtre ouverte</h3>
+      <p id="s3">Le téléchargement démarre tout seul dans ton dossier Téléchargements. Laisse la fenêtre noire ouverte jusqu'au message « TERMINÉ » : le dossier s'ouvre alors tout seul. Si Windows demande une autorisation réseau, clique « Autoriser ».</p>
     </div></li>
   </ol>
 
-  <div class="note"><p><strong>Si ça coupe :</strong> recommence l'étape 2 avec le même code. Le téléchargement reprend là où il s'était arrêté.</p></div>
+  <div class="note"><p><strong>Si ça coupe :</strong> recommence les étapes 1 et 2. Le téléchargement reprend là où il s'était arrêté.</p></div>
 
   <details>
     <summary>Je préfère télécharger un programme</summary>
     <p>Télécharge le fichier, puis double-clique dessus. Si Windows affiche un avertissement, clique « Informations complémentaires » puis « Exécuter quand même ».</p>
-    <p><a class="btn alt" href="Recevoir.bat" download>Télécharger Recevoir.bat</a></p>
+    <p><a class="btn alt" id="dl" href="Recevoir.bat" download="Recevoir.bat">Télécharger Recevoir.bat</a></p>
   </details>
   <details>
     <summary>Je suis sur Mac ou Linux</summary>
     <p>Ouvre le Terminal et colle ces deux lignes, en remplaçant LE-CODE par ton code :</p>
     <pre>curl -s https://getcroc.schollz.com | bash
-CROC_SECRET="LE-CODE" croc --yes --out ~/Downloads</pre>
+CROC_SECRET="<span id="mc">LE-CODE</span>" croc --yes --out ~/Downloads</pre>
   </details>
 
   <hr>
   <h2>Tu veux envoyer un dossier ?</h2>
-  <p class="lead" style="margin-bottom:0">Télécharge le programme d'envoi et double-clique dessus, ou glisse un dossier dessus. Il te donne un message à transmettre avec le lien de cette page, et un code d'accès à envoyer à part.</p>
+  <p class="lead" style="margin-bottom:0">Télécharge le programme d'envoi et double-clique dessus, ou glisse un dossier dessus. Il te donne un lien personnel à envoyer à ton client.</p>
   <div class="send"><a class="btn" href="Envoyer%20un%20dossier.bat" download>Télécharger « Envoyer un dossier »</a></div>
 
   <footer>Les fichiers passent directement d'un PC à l'autre. Ils sont chiffrés avec le code d'accès : ni ce site, ni le serveur de relais ne peuvent les lire. Moteur open source : croc.</footer>
 </main>
 <script>
 {
-  const CMD = "powershell -c \"[Net.ServicePointManager]::SecurityProtocol='Tls12';iex(irm https://maltablender.github.io/transfert/r.txt)\"";
+  const m = location.hash.slice(1).match(/^[0-9]{4}(-[a-z0-9]{5}){3}$/);
+  const CODE = m ? m[0] : '';
+  const SET = CODE ? "$env:TS_CODE='" + CODE + "';" : '';
+  const CMD = "powershell -c \"" + SET + "[Net.ServicePointManager]::SecurityProtocol='Tls12';iex(irm https://maltablender.github.io/transfert/r.txt)\"";
+  if (CODE) {
+    document.getElementById('mc').textContent = CODE;
+    const bat = '@echo off\r\nchcp 65001 >nul\r\nset "TS_CODE=' + CODE + '"\r\npowershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=\'Tls12\'; iex (irm https://maltablender.github.io/transfert/r.txt)"\r\n';
+    const dl = document.getElementById('dl');
+    dl.href = URL.createObjectURL(new Blob([bat], {type: 'application/octet-stream'}));
+  } else {
+    document.getElementById('lead').textContent = "Trois gestes sur un PC Windows. La fenêtre te demandera le code d'accès qu'on t'a envoyé.";
+  }
   const c = document.getElementById('c');
   const b = document.getElementById('copy');
   c.textContent = CMD;

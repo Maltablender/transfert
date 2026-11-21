@@ -122,31 +122,20 @@ try {
     $croc = Get-Croc
     $code = New-Code
 
-    $link = 'https://maltablender.github.io/transfert/'
+    $link = 'https://maltablender.github.io/transfert/#' + $code
 
     $msg1 = @"
-Bonjour,
-
 Je t'envoie le dossier « $name » ($(Format-Size $size)).
-
-Pour le recevoir, ouvre ce lien et suis les étapes (1 minute) :
+Clique sur ce lien et suis les étapes (30 secondes) :
 $link
-
-Je t'envoie le code d'accès dans un message séparé.
-Le transfert est chiffré de bout en bout : sans le code, personne ne peut lire le dossier.
 "@
-    $msg2 = "Code d'accès : $code"
 
     Write-Host ''
     Write-Host '================================================================' -ForegroundColor DarkGray
-    Write-Host $msg1
-    Write-Host '----------------------------------------------------------------' -ForegroundColor DarkGray
-    Write-Host '  CODE D''ACCÈS : ' -NoNewline; Write-Host $code -ForegroundColor Yellow
+    Write-Host $msg1 -ForegroundColor Yellow
     Write-Host '================================================================' -ForegroundColor DarkGray
-    Write-Host 'Conseil : envoie le message (lien) par mail et le code par SMS/WhatsApp.' -ForegroundColor DarkGray
-    try { Set-Clipboard -Value $msg1; Write-Host 'Message 1 (lien) copié dans le presse-papiers.' -ForegroundColor Green } catch {}
-    Read-Host 'Appuie sur Entrée pour copier le CODE dans le presse-papiers'
-    try { Set-Clipboard -Value $msg2; Write-Host 'Code copié.' -ForegroundColor Green } catch {}
+    Write-Host 'Ce lien contient la clé d''accès : envoie-le uniquement à ton client.' -ForegroundColor DarkGray
+    try { Set-Clipboard -Value $msg1; Write-Host 'Message copié : colle-le à ton client avec Ctrl + V.' -ForegroundColor Green } catch {}
 
     # ---------- 4. Envoi ----------
     Add-Type -Namespace TS -Name Power -MemberDefinition '[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint f);'

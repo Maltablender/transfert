@@ -44,22 +44,19 @@ function Get-Croc {
 try {
     $croc = Get-Croc
 
-    # ---------- 1. Code ----------
+    # ---------- 1. Code (fourni par le lien, sinon demandé) ----------
+    $code = "$env:TS_CODE".Trim()
     Write-Host ''
-    do {
+    while (-not $code) {
         $code = (Read-Host "Colle le code d'accès reçu").Trim()
         $code = $code -replace '^(?i)code d.acc[eè]s\s*:\s*', ''
-    } while (-not $code)
+    }
 
-    # ---------- 2. Destination ----------
-    Add-Type -AssemblyName System.Windows.Forms
-    $owner = New-Object System.Windows.Forms.Form -Property @{ TopMost = $true }
-    $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
-    $dlg.Description = 'Où enregistrer le dossier reçu ?'
-    $dlg.ShowNewFolderButton = $true
-    $dlg.SelectedPath = Join-Path $env:USERPROFILE 'Downloads'
-    if ($dlg.ShowDialog($owner) -ne [System.Windows.Forms.DialogResult]::OK) { exit }
-    $dest = $dlg.SelectedPath
+    # ---------- 2. Destination : dossier Téléchargements ----------
+    $dest = Join-Path $env:USERPROFILE 'Downloads'
+    try { $dest = (New-Object -ComObject Shell.Application).Namespace('shell:Downloads').Self.Path } catch {}
+    if (-not (Test-Path -LiteralPath $dest)) { New-Item -ItemType Directory -Force -Path $dest | Out-Null }
+    Write-Host "Le dossier sera enregistré dans : $dest" -ForegroundColor Cyan
     $drive = (Get-Item -LiteralPath $dest).PSDrive
     if ($drive -and $drive.Free) { Write-Host ("Espace libre sur {0}: : {1:N1} Go" -f $drive.Name, ($drive.Free / 1GB)) -ForegroundColor DarkGray }
 
