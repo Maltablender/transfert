@@ -255,6 +255,11 @@ $Xaml = @'
           </Grid>
           <TextBlock x:Name="PrepTitle" Style="{StaticResource H1}" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,26,0,0" Text="Préparation…"/>
           <TextBlock x:Name="PrepSub" Style="{StaticResource Sub}" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="420"/>
+          <Border Width="320" Height="6" CornerRadius="3" Background="#1C1C1E" Margin="0,24,0,0" ClipToBounds="True" HorizontalAlignment="Center">
+            <Rectangle x:Name="PrepSweep" Width="130" Height="6" RadiusX="3" RadiusY="3" Fill="{StaticResource Accent}" HorizontalAlignment="Left">
+              <Rectangle.RenderTransform><TranslateTransform x:Name="PrepSweepT" X="-130"/></Rectangle.RenderTransform>
+            </Rectangle>
+          </Border>
         </StackPanel>
 
         <!-- EN ATTENTE DU CLIENT -->
@@ -462,7 +467,7 @@ try {
     Add-Type -AssemblyName System.Windows.Forms
     $win = [Windows.Markup.XamlReader]::Parse($Xaml)
     $ui = @{}
-    foreach ($n in 'Root','TitleBar','BtnMin','BtnClose','VIdle','Drop','DropRect','DropFloat','VPrep','SpinRot','PrepTitle','PrepSub',
+    foreach ($n in 'Root','TitleBar','BtnMin','BtnClose','VIdle','Drop','DropRect','DropFloat','VPrep','SpinRot','PrepTitle','PrepSub','PrepSweep','PrepSweepT',
                    'VWait','WaitSub','MsgBox','BtnCopy','BtnCopyCode','CodeText','BtnCancelWait','WaitDot','WaitState','WaitInfo','WaitWarn','BtnSelfTest',
                    'VRun','RunTitle','RunSub','Pct','BarTrack','BarFill','Fx','StDone','StSpeed','StEta','CurFile','BtnCancelRun',
                    'VDone','CheckScale','DoneTitle','DoneSub','DoneVerifyBox','DoneVerify','BtnDone1','BtnDone2',
@@ -831,8 +836,9 @@ function Send-Ready {
     $ui.BtnSelfTest.Content = "M'envoyer ce dossier à moi-même (test sur ce PC)  →"
     $ok = Copy-Text $msg
     $ui.WaitSub.Text = if ($ok) { 'Message copié : colle-le à ton client (Ctrl + V). Il peut recevoir dès maintenant.' } else { 'Copie ce message et donne-le à ton client.' }
-    $ui.WaitState.Text = 'En attente de ton client…'
-    $ui.WaitInfo.Text = ('{0:N0} fichiers · {1:N0} dossiers · {2}. Le transfert démarre dès que ton client reçoit.' -f $sc.Files, $sc.Dirs, (Format-Size $S.Size))
+    $ui.WaitState.Text = 'Prêt · ton client peut recevoir maintenant'
+    try { $ui.WaitDot.Fill = New-Brush 255 52 211 153 } catch {}
+    $ui.WaitInfo.Text = ('{0:N0} fichiers · {1:N0} dossiers · {2}. C''est prêt : le gros transfert se lance (avec barre de progression ici) dès que ton client ouvre le lien.' -f $sc.Files, $sc.Dirs, (Format-Size $S.Size))
     if ($sc.Errors -gt 0) {
         $ui.WaitWarn.Text = "Attention : $($sc.Errors) élément(s) illisible(s) (accès refusé), par exemple : " + (($sc.Bad | Select-Object -First 2) -join ', ')
         $ui.WaitWarn.Visibility = 'Visible'
@@ -1100,6 +1106,7 @@ function Update-Fx {
     # respiration du point « en attente »
     if ($LiveDot) { $LiveDot.Opacity = 0.55 + 0.45 * [math]::Abs([math]::Sin($S.Tick / 12.0)) }
     if ($S.View -eq 'VWait') { $ui.WaitDot.Opacity = 0.45 + 0.55 * [math]::Abs([math]::Sin($S.Tick / 9.0)) }
+    if ($S.View -eq 'VPrep') { $S.Sweep = (([double]$S.Sweep + 7) % 460); $ui.PrepSweepT.X = $S.Sweep - 130 }
     if ($S.View -eq 'VIdle') { $ui.DropFloat.Y = 3 * [math]::Sin($S.Tick / 14.0) }
 }
 
