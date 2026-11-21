@@ -740,9 +740,19 @@ function Read-Line([string]$l) {
         $cur = ConvertTo-Bytes $Matches[3] $Matches[5]; $max = ConvertTo-Bytes $Matches[4] $Matches[5]
         if ($Matches[6]) { $S.Speed = ConvertTo-Bytes $Matches[6] $Matches[7] }
         if ($name -match '(?i)hashing|hash\b|calcul') {
+            $S.HashSeen = $true; $S.LastHash = Get-Date
             if (-not $S.GotProgress) {
-                if ($S.View -eq 'VWait') { $ui.WaitState.Text = 'Préparation du dossier…'; $ui.WaitInfo.Text = 'Vérification des fichiers avant l''envoi. Le transfert démarre juste après.' }
-                elseif ($S.View -eq 'VPrep') { $ui.PrepTitle.Text = 'Préparation…'; $ui.PrepSub.Text = 'Vérification des fichiers…' }
+                if ($name -ne $S.HashName) { if ($S.HashName) { $S.HashDone += $S.HashMax }; $S.HashName = $name }
+                $S.HashMax = $max
+                $tot = if ($S.Size -gt 0) { $S.Size } else { $max }
+                $hp = if ($tot -gt 0) { [int][math]::Min(100, [math]::Floor(100 * ($S.HashDone + $cur) / $tot)) } else { $pct }
+                if ($hp -ge 100) {
+                    if ($S.View -eq 'VWait') { $ui.WaitState.Text = 'Dossier prêt ✓ · en attente de ton client'; $ui.WaitInfo.Text = 'Le dossier est préparé et vérifié : ton client peut le recevoir.' }
+                    elseif ($S.View -eq 'VPrep') { $ui.PrepTitle.Text = 'Dossier prêt'; $ui.PrepSub.Text = 'Connexion à l''expéditeur…' }
+                } else {
+                    if ($S.View -eq 'VWait') { $ui.WaitState.Text = "Préparation du dossier… $hp %"; $ui.WaitInfo.Text = 'Attends 100 % : à ce moment ton dossier sera prêt à être reçu par ton client.' }
+                    elseif ($S.View -eq 'VPrep') { $ui.PrepTitle.Text = "Préparation… $hp %"; $ui.PrepSub.Text = 'Vérification des fichiers…' }
+                }
             } elseif ($S.View -eq 'VRun') { $ui.CurFile.Text = 'Vérification finale des fichiers…'; if ($S.Speed -gt 0) { $ui.StSpeed.Text = (Format-Size $S.Speed) + '/s' } }
             return
         }
@@ -794,6 +804,7 @@ function Start-Send([string[]]$paths) {
     if (-not $S.Croc -and -not $S.Bg.ContainsKey('croc')) { Start-Bg 'croc' $InstallCroc @($AppDir) }
 }
 function Start-SendCroc {
+    $S.HashDone = 0.0; $S.HashName = $null; $S.HashMax = 0.0; $S.HashSeen = $false
     $list = @($S.Paths)
     if ($S.Manifest) { $list += $S.Manifest }
     $q = ($list | ForEach-Object { '"' + $_ + '"' }) -join ' '
@@ -1067,6 +1078,10 @@ function Update-Fx {
 # ---------------------------------------------------------------- boucle de contrôle (4 fois par seconde)
 function Update-Logic {
     if ($S.Flash.Count) { Reset-Flash }
+    if ($Mode -eq 'send' -and $S.View -eq 'VWait' -and -not $S.GotProgress -and $S.HashSeen -and $S.LastHash -and ((Get-Date) - $S.LastHash).TotalSeconds -gt 2.5) {
+        $ui.WaitState.Text = 'Dossier prêt ✓ · en attente de ton client'
+        $ui.WaitInfo.Text = 'Le dossier est préparé et vérifié : ton client peut le recevoir.'
+    }
     if ($Mode -eq 'recv' -and $S.View -eq 'VPrep' -and $S.Running -and $S.StartTime -and -not $S.GotProgress -and ((Get-Date) - $S.StartTime).TotalSeconds -gt 7) {
         $ui.PrepTitle.Text = "En attente de l'expéditeur…"
         $ui.PrepSub.Text = "Le transfert démarre dès que l'expéditeur a Onde ouvert sur son PC. Destination : « $(Get-DestLabel) »."
