@@ -310,6 +310,29 @@ $Xaml = @'
           </Border>
           <Button x:Name="BtnCode" Style="{StaticResource Primary}" Content="Recevoir" Margin="0,16,0,0"/>
         </StackPanel>
+
+        <!-- CHOIX DU DOSSIER (réception) -->
+        <StackPanel x:Name="VDest" Visibility="Collapsed">
+          <TextBlock Style="{StaticResource H1}" Text="Où enregistrer le dossier ?"/>
+          <TextBlock Style="{StaticResource Sub}" Text="Choisis l'emplacement, puis lance la réception. Tout le contenu y sera copié à l'identique."/>
+          <Border CornerRadius="16" Background="#151922" BorderBrush="#252B38" BorderThickness="1" Margin="0,24,0,0" Padding="16,14">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <Grid Width="44" Height="44" VerticalAlignment="Center">
+                <Ellipse Fill="#1F2533"/>
+                <Path Data="M0,3 A2,2 0 0 1 2,1 L6,1 L8,3 L16,3 A2,2 0 0 1 18,5 L18,12 A2,2 0 0 1 16,14 L2,14 A2,2 0 0 1 0,12 Z" Fill="{StaticResource Accent}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Grid>
+              <StackPanel Grid.Column="1" Margin="14,0,10,0" VerticalAlignment="Center">
+                <TextBlock x:Name="DestName" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                <TextBlock x:Name="DestPath" FontSize="12" Foreground="#7D8597" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                <TextBlock x:Name="DestFree" FontSize="12" Foreground="#34D399" Margin="0,3,0,0"/>
+              </StackPanel>
+              <Button x:Name="BtnDestChange" Grid.Column="2" Style="{StaticResource Ghost}" Height="40" Width="112" FontSize="13" Content="Changer…" VerticalAlignment="Center"/>
+            </Grid>
+          </Border>
+          <Button x:Name="BtnDestGo" Style="{StaticResource Primary}" Content="Recevoir ici" Margin="0,18,0,0"/>
+          <TextBlock x:Name="DestErr" FontSize="13" Foreground="#F87171" Margin="2,12,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+        </StackPanel>
       </Grid>
 
       <!-- pied -->
@@ -354,7 +377,8 @@ try {
                    'VWait','WaitSub','MsgBox','BtnCopy','BtnCopyCode','CodeText','BtnCancelWait','WaitDot','WaitState','WaitInfo','WaitWarn',
                    'VRun','RunTitle','RunSub','Pct','BarTrack','BarFill','Fx','StDone','StSpeed','StEta','CurFile','BtnCancelRun',
                    'VDone','CheckScale','DoneTitle','DoneSub','DoneVerifyBox','DoneVerify','BtnDone1','BtnDone2',
-                   'VError','ErrTitle','ErrSub','BtnErr1','BtnErr2','VCode','CodeBox','BtnCode','Foot') {
+                   'VError','ErrTitle','ErrSub','BtnErr1','BtnErr2','VCode','CodeBox','BtnCode','Foot',
+                   'VDest','DestName','DestPath','DestFree','BtnDestChange','BtnDestGo','DestErr') {
         $ui[$n] = $win.FindName($n)
         if ($null -eq $ui[$n]) { throw "Élément d'interface manquant : $n" }
     }
@@ -527,7 +551,7 @@ $MakeSound = {
 }
 
 # ---------------------------------------------------------------- vues
-$AllViews = @('VIdle', 'VPrep', 'VWait', 'VRun', 'VDone', 'VError', 'VCode')
+$AllViews = @('VIdle', 'VPrep', 'VWait', 'VRun', 'VDone', 'VError', 'VCode', 'VDest')
 function Show-View([string]$v) {
     $S.View = $v
     foreach ($n in $AllViews) { $ui[$n].Visibility = if ($n -eq $v) { 'Visible' } else { 'Collapsed' } }
@@ -647,7 +671,8 @@ function Test-Space {
     try {
         $drive = (Get-Item -LiteralPath $S.Dest).PSDrive
         if ($drive -and $drive.Free -and $S.Total -gt ($drive.Free + 1e8)) {
-            Show-Error ("Pas assez de place sur le disque $($drive.Name): pour recevoir ce dossier.`nIl faut " + (Format-Size $S.Total) + ', il reste ' + (Format-Size $drive.Free) + '. Libère de la place, puis clique sur Réessayer.')
+            $S.DestOk = $false
+            Show-Error ("Pas assez de place sur le disque $($drive.Name): pour recevoir ce dossier.`nIl faut " + (Format-Size $S.Total) + ', il reste ' + (Format-Size $drive.Free) + '. Clique sur Réessayer pour choisir un autre emplacement.')
         }
     } catch {}
 }
@@ -723,12 +748,47 @@ function Get-CodeFrom([string]$t) {
     if ($m.Success) { return $m.Value }
     return ($t -replace '^(?i)\s*code d.acc[eè]s\s*:\s*', '').Trim()
 }
-function Start-Recv {
-    if (-not $S.Code) { Show-View 'VCode'; [void]$ui.CodeBox.Focus(); return }
+function Get-DefaultDest {
+    try {
+        $saved = Join-Path $AppDir 'destination.txt'
+        if (Test-Path -LiteralPath $saved) { $p = ([IO.File]::ReadAllText($saved)).Trim(); if ($p -and (Test-Path -LiteralPath $p -PathType Container)) { return $p } }
+    } catch {}
     $dest = Join-Path $env:USERPROFILE 'Downloads'
     try { $p = (New-Object -ComObject Shell.Application).Namespace('shell:Downloads').Self.Path; if ($p) { $dest = $p } } catch {}
-    if (-not (Test-Path -LiteralPath $dest)) { New-Item -ItemType Directory -Force -Path $dest | Out-Null }
-    $S.Dest = $dest; $S.Total = 0.0; $S.Overall = 0.0; $S.TargetPct = 0; $S.ShownPct = 0
+    return $dest
+}
+function Update-DestUi {
+    $leaf = Split-Path $S.Dest -Leaf
+    $ui.DestName.Text = if ($leaf) { $leaf } else { $S.Dest }
+    $ui.DestPath.Text = $S.Dest
+    $ui.DestFree.Text = ''
+    try { $drv = (Get-Item -LiteralPath $S.Dest).PSDrive; if ($drv -and $drv.Free) { $ui.DestFree.Text = 'Espace libre sur le disque ' + $drv.Name + ': ' + (Format-Size $drv.Free) } } catch {}
+    $ui.DestErr.Visibility = 'Collapsed'
+}
+function Show-DestChoice {
+    if (-not $S.Dest -or -not (Test-Path -LiteralPath $S.Dest)) { $S.Dest = Get-DefaultDest }
+    Update-DestUi
+    Show-View 'VDest'
+    if (-not $S.Croc -and -not $S.Bg.ContainsKey('croc')) { Start-Bg 'croc' $InstallCroc @($AppDir) }
+}
+function Confirm-Dest {
+    try {
+        if (-not (Test-Path -LiteralPath $S.Dest)) { New-Item -ItemType Directory -Force -Path $S.Dest | Out-Null }
+        $probe = Join-Path $S.Dest ('.sillage-test-' + [guid]::NewGuid().ToString('N').Substring(0, 6))
+        [IO.File]::WriteAllText($probe, 'ok'); Remove-Item -LiteralPath $probe -Force
+    } catch {
+        $ui.DestErr.Text = "Impossible d'écrire dans ce dossier (accès refusé). Choisis un autre emplacement."
+        $ui.DestErr.Visibility = 'Visible'
+        return
+    }
+    try { [IO.File]::WriteAllText((Join-Path $AppDir 'destination.txt'), $S.Dest) } catch {}
+    $S.DestOk = $true
+    Start-Recv
+}
+function Start-Recv {
+    if (-not $S.Code) { Show-View 'VCode'; [void]$ui.CodeBox.Focus(); return }
+    if (-not $S.DestOk) { Show-DestChoice; return }
+    $S.Total = 0.0; $S.Overall = 0.0; $S.TargetPct = 0; $S.ShownPct = 0
     if (-not $S.Croc) {
         Show-Prep 'Préparation…' 'Première utilisation : installation du module sécurisé (quelques secondes).'
         if (-not $S.Bg.ContainsKey('croc')) { Start-Bg 'croc' $InstallCroc @($AppDir) }
@@ -1008,6 +1068,14 @@ $ui.BtnErr1.Add_Click({
 })
 $ui.BtnErr2.Add_Click({ $win.Close() })
 $ui.BtnCode.Add_Click({ $S.Code = Get-CodeFrom $ui.CodeBox.Text; if ($S.Code) { Start-Recv } })
+$ui.BtnDestChange.Add_Click({
+    $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dlg.Description = 'Où enregistrer le dossier reçu ?'
+    $dlg.ShowNewFolderButton = $true
+    if ($S.Dest -and (Test-Path -LiteralPath $S.Dest)) { $dlg.SelectedPath = $S.Dest }
+    if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $S.Dest = $dlg.SelectedPath; Update-DestUi }
+})
+$ui.BtnDestGo.Add_Click({ Confirm-Dest })
 $ui.CodeBox.Add_KeyDown({ if ($_.Key -eq 'Return') { $S.Code = Get-CodeFrom $ui.CodeBox.Text; if ($S.Code) { Start-Recv } } })
 
 $win.Add_Closing({
