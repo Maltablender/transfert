@@ -1,0 +1,622 @@
+$Mode = if ("$env:TS_MODE" -eq 'recv') { 'recv' } else { 'send' }
+# ================================================================
+#  TRANSFERT SECURISE - application (envoi / réception)
+#  https://maltablender.github.io/transfert/
+#  Chiffrement de bout en bout (PAKE + AES-256) via croc (open source).
+#  Sans limite de taille, reprise automatique si la connexion coupe.
+# ================================================================
+$ErrorActionPreference = 'Stop'
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$ProgressPreference = 'SilentlyContinue'
+$Site = 'https://maltablender.github.io/transfert/'
+$AppDir = Join-Path $env:LOCALAPPDATA 'TransfertSecurise'
+New-Item -ItemType Directory -Force -Path $AppDir | Out-Null
+
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+try {
+    Add-Type -Namespace TSApp -Name Native -MemberDefinition @'
+[DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();
+[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int n);
+[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint f);
+'@
+} catch {}
+try { [void][TSApp.Native]::ShowWindow([TSApp.Native]::GetConsoleWindow(), 0) } catch {}
+[Windows.Forms.Application]::EnableVisualStyles()
+
+# ---------------------------------------------------------------- état
+$S = @{
+    Proc = $null; Readers = @(); Code = ''; Paths = @(); Name = ''; Size = 0L
+    Total = 0.0; Done = 0.0; CurName = $null; CurMax = 0.0; CurCounted = $false; LastPct = 0
+    Overall = 0.0; Speed = 0.0; Running = $false; Cancel = $false; Retries = 0; RetryAt = $null
+    Bg = @{}; Croc = $null; Scan = $null; AttrFile = $null; Lines = New-Object System.Collections.Generic.List[string]
+    View = ''; Anim = 0; Dest = ''; StartTime = $null; Indeterminate = $false; GotProgress = $false
+}
+
+# ---------------------------------------------------------------- utilitaires
+function Format-Size([double]$b) {
+    if ($b -ge 1e12) { return ('{0:N2} To' -f ($b / 1e12)) }
+    if ($b -ge 1e9)  { return ('{0:N1} Go' -f ($b / 1e9)) }
+    if ($b -ge 1e6)  { return ('{0:N1} Mo' -f ($b / 1e6)) }
+    if ($b -ge 1e3)  { return ('{0:N0} Ko' -f ($b / 1e3)) }
+    return ('{0:N0} o' -f $b)
+}
+function Format-Dur([double]$s) {
+    if ($s -lt 0 -or [double]::IsInfinity($s) -or [double]::IsNaN($s)) { return '' }
+    if ($s -lt 60) { return ('{0:N0} s' -f $s) }
+    if ($s -lt 3600) { return ('{0:N0} min' -f [math]::Ceiling($s / 60)) }
+    $h = [math]::Floor($s / 3600); $m = [math]::Floor(($s % 3600) / 60)
+    return ('{0} h {1:00}' -f $h, $m)
+}
+function ConvertTo-Bytes([string]$n, [string]$u) {
+    $v = [double]::Parse($n, [Globalization.CultureInfo]::InvariantCulture)
+    switch -regex ($u) {
+        '^[kK]iB$' { return $v * 1024 }
+        '^MiB$'    { return $v * 1048576 }
+        '^GiB$'    { return $v * 1073741824 }
+        '^TiB$'    { return $v * 1099511627776 }
+        '^[kK]B$'  { return $v * 1e3 }
+        '^MB$'     { return $v * 1e6 }
+        '^GB$'     { return $v * 1e9 }
+        '^TB$'     { return $v * 1e12 }
+        default    { return $v }
+    }
+}
+function Set-Awake([bool]$on) {
+    try { if ($on) { [void][TSApp.Native]::SetThreadExecutionState([uint32]2147483649) } else { [void][TSApp.Native]::SetThreadExecutionState([uint32]2147483648) } } catch {}
+}
+function Copy-Text([string]$t) {
+    for ($i = 0; $i -lt 5; $i++) { try { [Windows.Forms.Clipboard]::SetText($t); return $true } catch { Start-Sleep -Milliseconds 120 } }
+    return $false
+}
+function Start-Bg([string]$key, [scriptblock]$sb, [object[]]$argList) {
+    $ps = [powershell]::Create()
+    [void]$ps.AddScript($sb.ToString())
+    foreach ($a in $argList) { [void]$ps.AddArgument($a) }
+    $S.Bg[$key] = @{ PS = $ps; H = $ps.BeginInvoke() }
+}
+function Receive-Bg([string]$key) {
+    # renvoie $null si pas fini ; sinon @{ Ok; Value; Error }
+    $bg = $S.Bg[$key]
+    if (-not $bg -or -not $bg.H.IsCompleted) { return $null }
+    $S.Bg.Remove($key)
+    try {
+        $out = $bg.PS.EndInvoke($bg.H)
+        if ($bg.PS.HadErrors -and $out.Count -eq 0) { $msg = ($bg.PS.Streams.Error | Select-Object -First 1 | Out-String).Trim(); return @{ Ok = $false; Error = $msg } }
+        return @{ Ok = $true; Value = ($out | Select-Object -Last 1) }
+    } catch { return @{ Ok = $false; Error = $_.Exception.InnerException.Message + $_.Exception.Message } }
+    finally { $bg.PS.Dispose() }
+}
+
+# ---------------------------------------------------------------- tâches de fond
+$InstallCroc = {
+    param($AppDir)
+    $ErrorActionPreference = 'Stop'
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $ProgressPreference = 'SilentlyContinue'
+    $exe = Join-Path $AppDir 'croc.exe'
+    if (Test-Path -LiteralPath $exe) { return $exe }
+    $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'Windows-ARM64' } else { 'Windows-64bit' }
+    $rel = Invoke-RestMethod 'https://api.github.com/repos/schollz/croc/releases/latest' -Headers @{ 'User-Agent' = 'TransfertSecurise' }
+    $asset = $rel.assets | Where-Object { $_.name -like "*_$arch.zip" } | Select-Object -First 1
+    if (-not $asset) { throw "Moteur de transfert introuvable pour $arch." }
+    $zip = Join-Path $AppDir $asset.name
+    Invoke-WebRequest $asset.browser_download_url -OutFile $zip -UseBasicParsing
+    $sums = $rel.assets | Where-Object { $_.name -like '*checksums.txt' } | Select-Object -First 1
+    if ($sums) {
+        $txt = (Invoke-WebRequest $sums.browser_download_url -UseBasicParsing).Content
+        if ($txt -is [byte[]]) { $txt = [Text.Encoding]::UTF8.GetString($txt) }
+        $line = ($txt -split "`n") | Where-Object { $_ -match [regex]::Escape($asset.name) } | Select-Object -First 1
+        if ($line) {
+            $expected = ($line.Trim() -split '\s+')[0].ToLower()
+            $actual = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLower()
+            if ($expected -ne $actual) { Remove-Item -LiteralPath $zip -Force; throw 'Téléchargement du moteur corrompu (empreinte SHA-256 invalide).' }
+        }
+    }
+    $tmp = Join-Path $AppDir 'extract'
+    if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    Expand-Archive -LiteralPath $zip -DestinationPath $tmp -Force
+    $found = Get-ChildItem -LiteralPath $tmp -Recurse -Filter 'croc.exe' | Select-Object -First 1
+    Move-Item -LiteralPath $found.FullName -Destination $exe -Force
+    Remove-Item -LiteralPath $zip, $tmp -Recurse -Force
+    return $exe
+}
+$ScanPaths = {
+    param([string[]]$paths)
+    $ErrorActionPreference = 'Continue'
+    $size = 0L; $files = 0; $errs = 0
+    $lines = New-Object System.Collections.Generic.List[string]
+    foreach ($p in $paths) {
+        $parent = (Split-Path $p -Parent).TrimEnd('\')
+        $root = Get-Item -LiteralPath $p -Force
+        $items = New-Object System.Collections.Generic.List[object]
+        $items.Add($root)
+        if ($root.PSIsContainer) {
+            $ev = $null
+            foreach ($c in (Get-ChildItem -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue -ErrorVariable ev)) { $items.Add($c) }
+            if ($ev) { $errs += $ev.Count }
+        }
+        foreach ($it in $items) {
+            if (-not $it.PSIsContainer) { $files++; $size += $it.Length }
+            $f = ''
+            if ($it.Attributes -band [IO.FileAttributes]::Hidden) { $f += 'H' }
+            if ($it.Attributes -band [IO.FileAttributes]::System) { $f += 'S' }
+            if (-not $it.PSIsContainer -and ($it.Attributes -band [IO.FileAttributes]::ReadOnly)) { $f += 'R' }
+            if ($f) { $lines.Add($f + "`t" + $it.FullName.Substring($parent.Length).TrimStart('\')) }
+        }
+    }
+    return [pscustomobject]@{ Size = $size; Files = $files; Attr = $lines.ToArray(); Errors = $errs }
+}
+
+# ---------------------------------------------------------------- interface
+$C_BG = [Drawing.Color]::FromArgb(17, 20, 24)
+$C_PANEL = [Drawing.Color]::FromArgb(30, 35, 42)
+$C_MUTE = [Drawing.Color]::FromArgb(160, 170, 180)
+$C_ACC = [Drawing.Color]::FromArgb(232, 37, 26)
+$C_OK = [Drawing.Color]::FromArgb(46, 204, 113)
+$F_TITLE = New-Object Drawing.Font('Segoe UI Semibold', 17)
+$F_BODY = New-Object Drawing.Font('Segoe UI', 10.5)
+$F_SMALL = New-Object Drawing.Font('Segoe UI', 9)
+$F_BTN = New-Object Drawing.Font('Segoe UI Semibold', 10.5)
+
+$form = New-Object Windows.Forms.Form
+$form.Text = if ($Mode -eq 'send') { 'Transfert sécurisé - Envoyer' } else { 'Transfert sécurisé - Recevoir' }
+$form.ClientSize = New-Object Drawing.Size(580, 420)
+$form.StartPosition = 'CenterScreen'
+$form.FormBorderStyle = 'FixedSingle'
+$form.MaximizeBox = $false
+$form.BackColor = $C_BG
+$form.ForeColor = [Drawing.Color]::White
+$form.Font = $F_BODY
+try { $form.Icon = [Drawing.SystemIcons]::Shield } catch {}
+
+function New-Label($x, $y, $w, $h, $font, $color) {
+    $l = New-Object Windows.Forms.Label
+    $l.Location = New-Object Drawing.Point($x, $y); $l.Size = New-Object Drawing.Size($w, $h)
+    $l.Font = $font; $l.ForeColor = $color; $l.BackColor = [Drawing.Color]::Transparent
+    $form.Controls.Add($l); return $l
+}
+function New-Button($x, $y, $w, $primary) {
+    $b = New-Object Windows.Forms.Button
+    $b.Location = New-Object Drawing.Point($x, $y); $b.Size = New-Object Drawing.Size($w, 46)
+    $b.FlatStyle = 'Flat'; $b.FlatAppearance.BorderSize = if ($primary) { 0 } else { 1 }
+    $b.FlatAppearance.BorderColor = $C_MUTE
+    $b.BackColor = if ($primary) { $C_ACC } else { $C_BG }
+    $b.ForeColor = [Drawing.Color]::White; $b.Font = $F_BTN; $b.Cursor = 'Hand'
+    $form.Controls.Add($b); return $b
+}
+
+$lblBadge = New-Label 30 22 520 20 $F_SMALL $C_MUTE
+$lblBadge.Text = 'CHIFFRÉ DE BOUT EN BOUT  ·  SANS LIMITE DE TAILLE'
+$lblTitle = New-Label 28 46 524 40 $F_TITLE ([Drawing.Color]::White)
+$lblSub = New-Label 30 90 520 48 $F_BODY $C_MUTE
+
+$drop = New-Object Windows.Forms.Label
+$drop.Location = New-Object Drawing.Point(30, 146); $drop.Size = New-Object Drawing.Size(520, 170)
+$drop.TextAlign = 'MiddleCenter'; $drop.BackColor = $C_PANEL; $drop.ForeColor = [Drawing.Color]::White
+$drop.Font = New-Object Drawing.Font('Segoe UI Semibold', 13); $drop.Cursor = 'Hand'; $drop.AllowDrop = $true
+$drop.Text = "Glisse ton dossier ou tes fichiers ici`n`nou clique pour choisir un dossier"
+$drop.Add_Paint({
+    $pen = New-Object Drawing.Pen($C_MUTE, 2)
+    $pen.DashStyle = [Drawing.Drawing2D.DashStyle]::Dash
+    $_.Graphics.DrawRectangle($pen, 2, 2, $this.Width - 5, $this.Height - 5)
+    $pen.Dispose()
+})
+$form.Controls.Add($drop)
+
+$box = New-Object Windows.Forms.TextBox
+$box.Location = New-Object Drawing.Point(30, 146); $box.Size = New-Object Drawing.Size(520, 100)
+$box.Multiline = $true; $box.ReadOnly = $true; $box.BorderStyle = 'None'
+$box.BackColor = $C_PANEL; $box.ForeColor = [Drawing.Color]::White; $box.Font = $F_BODY
+$form.Controls.Add($box)
+
+$txtCode = New-Object Windows.Forms.TextBox
+$txtCode.Location = New-Object Drawing.Point(30, 160); $txtCode.Size = New-Object Drawing.Size(520, 30)
+$txtCode.BackColor = $C_PANEL; $txtCode.ForeColor = [Drawing.Color]::White; $txtCode.BorderStyle = 'FixedSingle'
+$txtCode.Font = New-Object Drawing.Font('Segoe UI', 12)
+$form.Controls.Add($txtCode)
+
+$track = New-Object Windows.Forms.Panel
+$track.Location = New-Object Drawing.Point(30, 168); $track.Size = New-Object Drawing.Size(520, 14); $track.BackColor = $C_PANEL
+$fill = New-Object Windows.Forms.Panel
+$fill.Location = New-Object Drawing.Point(0, 0); $fill.Size = New-Object Drawing.Size(0, 14); $fill.BackColor = $C_ACC
+$track.Controls.Add($fill); $form.Controls.Add($track)
+
+$lblStat = New-Label 30 194 520 26 (New-Object Drawing.Font('Segoe UI Semibold', 11)) ([Drawing.Color]::White)
+$lblFile = New-Label 30 222 520 40 $F_SMALL $C_MUTE
+$lblFile.AutoEllipsis = $true
+
+$btn1 = New-Button 30 346 250 $true
+$btn2 = New-Button 300 346 250 $false
+$lblFoot = New-Label 30 396 520 18 $F_SMALL $C_MUTE
+$lblFoot.Text = 'Les fichiers vont directement d''un PC à l''autre. Personne d''autre ne peut les lire.'
+
+function Set-View([string]$v, [string]$title, [string]$sub) {
+    $S.View = $v
+    $lblTitle.Text = $title; $lblSub.Text = $sub
+    $drop.Visible = ($v -eq 'idle')
+    $box.Visible = ($v -eq 'wait')
+    $txtCode.Visible = ($v -eq 'code')
+    $prog = @('prep', 'wait', 'connect', 'run', 'retry') -contains $v
+    $track.Visible = $prog; $lblStat.Visible = $prog; $lblFile.Visible = $prog
+    if ($v -eq 'wait') { $track.Top = 262; $lblStat.Top = 284; $lblFile.Top = 310; $lblFile.Height = 22 }
+    else { $track.Top = 168; $lblStat.Top = 194; $lblFile.Top = 222; $lblFile.Height = 40 }
+    $S.Indeterminate = @('prep', 'wait', 'connect', 'retry') -contains $v
+    if ($v -eq 'done') { $fill.BackColor = $C_OK } else { $fill.BackColor = $C_ACC }
+    $btn1.Visible = $false; $btn2.Visible = $false
+    if (-not $prog) { $lblStat.Text = ''; $lblFile.Text = '' }
+}
+function Set-Buttons([string]$t1, [string]$t2) {
+    $btn1.Text = $t1; $btn1.Visible = [bool]$t1
+    $btn2.Text = $t2; $btn2.Visible = [bool]$t2
+}
+function Set-Fill([double]$pct) {
+    $pct = [math]::Max(0, [math]::Min(100, $pct))
+    $fill.Left = 0; $fill.Width = [int]($track.Width * $pct / 100)
+}
+function Show-Error([string]$msg) {
+    Stop-Croc
+    Set-View 'error' 'Un problème est survenu' $msg
+    Set-Buttons 'Réessayer' 'Fermer'
+}
+
+# ---------------------------------------------------------------- moteur (croc)
+function Start-Croc([string]$arguments, [hashtable]$envVars) {
+    $psi = New-Object Diagnostics.ProcessStartInfo
+    $psi.FileName = $S.Croc
+    $psi.Arguments = $arguments
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = [Text.Encoding]::UTF8
+    $psi.StandardErrorEncoding = [Text.Encoding]::UTF8
+    $psi.WorkingDirectory = $AppDir
+    if ($envVars) { foreach ($k in $envVars.Keys) { $psi.EnvironmentVariables[$k] = [string]$envVars[$k] } }
+    $p = [Diagnostics.Process]::Start($psi)
+    $S.Proc = $p
+    $S.Readers = @(
+        @{ SR = $p.StandardOutput; Buf = (New-Object char[] 8192); Task = $null; Acc = ''; Done = $false },
+        @{ SR = $p.StandardError;  Buf = (New-Object char[] 8192); Task = $null; Acc = ''; Done = $false }
+    )
+    foreach ($r in $S.Readers) { $r.Task = $r.SR.ReadAsync($r.Buf, 0, $r.Buf.Length) }
+    $S.Running = $true
+    $S.Done = 0.0; $S.CurName = $null; $S.CurMax = 0.0; $S.CurCounted = $false; $S.LastPct = 0; $S.GotProgress = $false
+    Set-Awake $true
+}
+function Stop-Croc {
+    $S.Running = $false
+    if ($S.Proc) { try { if (-not $S.Proc.HasExited) { $S.Proc.Kill() } } catch {} }
+    $S.Proc = $null
+    Set-Awake $false
+}
+$ESC = [string][char]27
+function Read-Croc {
+    foreach ($r in $S.Readers) {
+        while (-not $r.Done -and $r.Task.IsCompleted) {
+            $n = 0
+            try { $n = $r.Task.Result } catch { $n = 0 }
+            if ($n -le 0) { $r.Done = $true; break }
+            $r.Acc += [string]::new($r.Buf, 0, $n)
+            $r.Task = $r.SR.ReadAsync($r.Buf, 0, $r.Buf.Length)
+        }
+        if ($r.Acc.IndexOfAny([char[]]"`r`n") -ge 0) {
+            $parts = $r.Acc -split "[`r`n]"
+            $r.Acc = $parts[-1]
+            for ($i = 0; $i -lt $parts.Count - 1; $i++) { Read-Line $parts[$i] }
+        }
+        if ($r.Done -and $r.Acc) { Read-Line $r.Acc; $r.Acc = '' }
+    }
+}
+$RxProg = '^(.*?)\s*(\d{1,3})%\s*\|.*?\|\s*\(([\d.]+)/([\d.]+)\s*([kKMGTP]?i?B)(?:,\s*([\d.]+)\s*([kKMGTP]?i?B)/s)?\)'
+$RxTotal = '^(Sending|Receiving|Accept)\s.*\(([\d.]+)\s*([kKMGTP]?i?B)\)'
+function Read-Line([string]$l) {
+    if ($S.View -eq 'error') { return }
+    $l = ($l -replace ($ESC + '\[[0-9;?]*[A-Za-z]'), '').Trim()
+    if (-not $l) { return }
+    if ($l -notmatch '%\s*\|') { $S.Lines.Add($l); if ($S.Lines.Count -gt 12) { $S.Lines.RemoveAt(0) } }
+    if ($l -match $RxTotal) {
+        $S.Total = ConvertTo-Bytes $Matches[2] $Matches[3]
+        if ($Mode -eq 'recv') { Test-Space }
+        return
+    }
+    if ($l -match $RxProg) {
+        $name = $Matches[1].Trim(); $pct = [int]$Matches[2]
+        $cur = ConvertTo-Bytes $Matches[3] $Matches[5]; $max = ConvertTo-Bytes $Matches[4] $Matches[5]
+        if ($Matches[6]) { $S.Speed = ConvertTo-Bytes $Matches[6] $Matches[7] }
+        if ($name -ne $S.CurName -or $pct -lt ($S.LastPct - 5)) {
+            if ($null -ne $S.CurName -and -not $S.CurCounted) { $S.Done += $S.CurMax }
+            $S.CurName = $name; $S.CurCounted = $false
+        }
+        $S.CurMax = $max; $S.LastPct = $pct
+        if ($pct -ge 100 -and -not $S.CurCounted) { $S.Done += $max; $S.CurCounted = $true }
+        $S.Overall = $S.Done + $(if ($S.CurCounted) { 0 } else { $cur })
+        if (-not $S.GotProgress) {
+            $S.GotProgress = $true; $S.Retries = 0
+            if ($Mode -eq 'send') { Set-View 'run' 'Envoi en cours' "Ton client télécharge « $($S.Name) ». Laisse cette fenêtre ouverte." }
+            else { Set-View 'run' 'Réception en cours' "Enregistrement dans : $($S.Dest)`nLaisse cette fenêtre ouverte jusqu'à la fin." }
+            Set-Buttons '' 'Annuler'
+        }
+        $total = if ($S.Total -gt 0) { $S.Total } else { $max }
+        $gpct = if ($total -gt 0) { 100 * $S.Overall / $total } else { $pct }
+        $gpct = [math]::Min(99.9, $gpct)
+        Set-Fill $gpct
+        $eta = if ($S.Speed -gt 0) { Format-Dur (($total - $S.Overall) / $S.Speed) } else { '' }
+        $parts = @(('{0:N0} %' -f [math]::Floor($gpct)), ((Format-Size $S.Overall) + ' / ' + (Format-Size $total)))
+        if ($S.Speed -gt 0) { $parts += ((Format-Size $S.Speed) + '/s') }
+        if ($eta) { $parts += ('reste ' + $eta) }
+        $lblStat.Text = $parts -join '   ·   '
+        $lblFile.Text = $name
+    }
+}
+function Test-Space {
+    try {
+        $drive = (Get-Item -LiteralPath $S.Dest).PSDrive
+        if ($drive -and $drive.Free -and $S.Total -gt ($drive.Free + 1e8)) {
+            $need = Format-Size $S.Total; $free = Format-Size $drive.Free
+            Show-Error "Pas assez de place sur le disque $($drive.Name): pour recevoir ce dossier.`nIl faut $need, il reste $free. Libère de la place puis clique sur Réessayer."
+        }
+    } catch {}
+}
+
+# ---------------------------------------------------------------- ENVOI
+function New-Code {
+    $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+    $alpha = 'abcdefghjkmnpqrstuvwxyz23456789'
+    $mk = { param($n, $chars) $b = New-Object byte[] $n; $rng.GetBytes($b); -join ($b | ForEach-Object { $chars[$_ % $chars.Length] }) }
+    return ('{0}-{1}-{2}-{3}' -f (& $mk 4 '0123456789'), (& $mk 5 $alpha), (& $mk 5 $alpha), (& $mk 5 $alpha))
+}
+function Start-Send([string[]]$paths) {
+    $paths = @($paths | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | ForEach-Object { (Resolve-Path -LiteralPath $_).ProviderPath.TrimEnd('\') })
+    if ($paths.Count -eq 0) { return }
+    $S.Paths = $paths
+    $S.Name = if ($paths.Count -eq 1) { Split-Path $paths[0] -Leaf } else { "$($paths.Count) éléments" }
+    Set-View 'prep' 'Préparation…' "Analyse de « $($S.Name) » (fichiers cachés compris)…"
+    $lblStat.Text = ''; $lblFile.Text = ''
+    Start-Bg 'scan' $ScanPaths @(, [string[]]$paths)
+    if (-not $S.Croc -and -not $S.Bg.ContainsKey('croc')) { Start-Bg 'croc' $InstallCroc @($AppDir) }
+    $S.Scan = $null
+}
+function Start-SendCroc {
+    $list = @($S.Paths)
+    if ($S.AttrFile) { $list += $S.AttrFile }
+    $q = ($list | ForEach-Object { '"' + $_ + '"' }) -join ' '
+    Start-Croc ("--no-compress send --code " + $S.Code + " " + $q) $null
+}
+function Send-Ready {
+    $sc = $S.Scan
+    $S.Size = [int64]$sc.Size
+    $S.AttrFile = $null
+    if ($sc.Attr -and $sc.Attr.Count) {
+        $dir = Join-Path $AppDir ('envoi_' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+        New-Item -ItemType Directory -Force -Path $dir | Out-Null
+        $S.AttrFile = Join-Path $dir 'attributs.tsattr'
+        [IO.File]::WriteAllLines($S.AttrFile, [string[]]$sc.Attr, (New-Object Text.UTF8Encoding $false))
+    }
+    $S.Code = New-Code
+    $link = $Site + '#' + $S.Code
+    $msg = "Je t'envoie « $($S.Name) » ($(Format-Size $S.Size)), chiffré de bout en bout.`r`nClique sur ce lien pour le recevoir : $link"
+    $box.Text = $msg
+    $ok = Copy-Text $msg
+    $sub = if ($ok) { "✓ Message copié. Colle-le à ton client (Ctrl + V) par mail, SMS ou WhatsApp." } else { "Copie ce message et envoie-le à ton client." }
+    if ($sc.Errors -gt 0) { $sub += "`nAttention : $($sc.Errors) élément(s) illisible(s) (accès refusé)." }
+    Set-View 'wait' 'Envoie ce message à ton client' $sub
+    $lblStat.Text = 'En attente de ton client…'
+    $lblFile.Text = "$($sc.Files) fichier(s) · $(Format-Size $S.Size) · le transfert démarre dès qu'il ouvre le lien"
+    Set-Buttons 'Copier le message' 'Annuler'
+    $S.Retries = 0
+    Start-SendCroc
+}
+function Send-Finished {
+    if ($S.AttrFile) { try { Remove-Item -LiteralPath (Split-Path $S.AttrFile -Parent) -Recurse -Force } catch {} ; $S.AttrFile = $null }
+    Set-Fill 100
+    Set-View 'done' '✓ Transfert terminé' "Ton client a reçu « $($S.Name) » en entier ($(Format-Size $S.Size))."
+    Set-Buttons 'Envoyer autre chose' 'Fermer'
+}
+function Reset-Send {
+    Stop-Croc
+    if ($S.AttrFile) { try { Remove-Item -LiteralPath (Split-Path $S.AttrFile -Parent) -Recurse -Force } catch {} ; $S.AttrFile = $null }
+    Set-View 'idle' 'Envoyer un dossier' 'Glisse ton dossier ci-dessous : le message à envoyer à ton client est copié automatiquement.'
+    Set-Buttons '' ''
+}
+function Install-Shortcut {
+    try {
+        $cmd = Join-Path $AppDir 'Envoyer.cmd'
+        $content = "@echo off`r`nset `"TS_ARGS=%*`"`r`nstart `"`" powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"[Net.ServicePointManager]::SecurityProtocol='Tls12'; iex (irm ${Site}e.txt)`"`r`n"
+        [IO.File]::WriteAllText($cmd, $content, (New-Object Text.ASCIIEncoding))
+        $desk = [Environment]::GetFolderPath('Desktop')
+        $lnkPath = Join-Path $desk 'Transfert sécurisé.lnk'
+        if (-not (Test-Path -LiteralPath $lnkPath)) {
+            $ws = New-Object -ComObject WScript.Shell
+            $lnk = $ws.CreateShortcut($lnkPath)
+            $lnk.TargetPath = $cmd
+            $lnk.WorkingDirectory = $AppDir
+            $lnk.WindowStyle = 7
+            $lnk.IconLocation = "$env:SystemRoot\System32\shell32.dll,47"
+            $lnk.Description = 'Envoyer un dossier chiffré à un client'
+            $lnk.Save()
+        }
+    } catch {}
+}
+
+# ---------------------------------------------------------------- RECEPTION
+function Get-CodeFrom([string]$t) {
+    if (-not $t) { return '' }
+    $m = [regex]::Match($t, '\d{4}(-[a-z0-9]{5}){3}')
+    if ($m.Success) { return $m.Value }
+    $t = ($t -replace '^(?i)\s*code d.acc[eè]s\s*:\s*', '').Trim()
+    return $t
+}
+function Start-Recv {
+    if (-not $S.Code) {
+        Set-View 'code' 'Recevoir un dossier' "Colle le lien ou le code d'accès qu'on t'a envoyé."
+        Set-Buttons 'Recevoir' ''
+        $txtCode.Focus() | Out-Null
+        return
+    }
+    $dest = Join-Path $env:USERPROFILE 'Downloads'
+    try { $p = (New-Object -ComObject Shell.Application).Namespace('shell:Downloads').Self.Path; if ($p) { $dest = $p } } catch {}
+    if (-not (Test-Path -LiteralPath $dest)) { New-Item -ItemType Directory -Force -Path $dest | Out-Null }
+    $S.Dest = $dest
+    $S.Total = 0.0; $S.Overall = 0.0
+    if (-not $S.Croc) {
+        Set-View 'prep' 'Préparation…' 'Première utilisation : installation du module sécurisé (quelques secondes).'
+        Set-Buttons '' 'Annuler'
+        Start-Bg 'croc' $InstallCroc @($AppDir)
+        return
+    }
+    Start-RecvCroc
+}
+function Start-RecvCroc {
+    Set-View 'connect' 'Connexion à l''expéditeur…' "Le dossier sera enregistré dans : $($S.Dest)"
+    Set-Buttons '' 'Annuler'
+    $lblStat.Text = 'Connexion sécurisée en cours…'
+    $S.StartTime = Get-Date
+    Start-Croc ('--yes --overwrite --out "' + $S.Dest + '"') @{ CROC_SECRET = $S.Code }
+}
+function Recv-Finished {
+    try {
+        Get-ChildItem -LiteralPath $S.Dest -Filter '*.tsattr' -File -Force | Where-Object { $_.LastWriteTime -ge $S.StartTime.AddMinutes(-1) } | ForEach-Object {
+            foreach ($line in [IO.File]::ReadAllLines($_.FullName, [Text.Encoding]::UTF8)) {
+                $parts = $line -split "`t", 2
+                if ($parts.Count -ne 2 -or $parts[1] -match '(^|\\)\.\.(\\|$)' -or [IO.Path]::IsPathRooted($parts[1])) { continue }
+                $p = Join-Path $S.Dest $parts[1]
+                if (-not (Test-Path -LiteralPath $p)) { continue }
+                try {
+                    $item = Get-Item -LiteralPath $p -Force
+                    $a = $item.Attributes
+                    if ($parts[0] -match 'H') { $a = $a -bor [IO.FileAttributes]::Hidden }
+                    if ($parts[0] -match 'S') { $a = $a -bor [IO.FileAttributes]::System }
+                    if ($parts[0] -match 'R') { $a = $a -bor [IO.FileAttributes]::ReadOnly }
+                    $item.Attributes = $a
+                } catch {}
+            }
+            Remove-Item -LiteralPath $_.FullName -Force
+        }
+    } catch {}
+    Set-Fill 100
+    $size = if ($S.Total -gt 0) { " ($(Format-Size $S.Total))" } else { '' }
+    Set-View 'done' '✓ Dossier reçu' "Tout est arrivé$size, enregistré dans :`n$($S.Dest)"
+    Set-Buttons 'Ouvrir le dossier' 'Fermer'
+    try { Start-Process explorer.exe $S.Dest } catch {}
+}
+
+# ---------------------------------------------------------------- boucle principale
+$timer = New-Object Windows.Forms.Timer
+$timer.Interval = 250
+$timer.Add_Tick({
+    try {
+        # animation « en attente »
+        if ($S.Indeterminate -and $track.Visible) {
+            $S.Anim = ($S.Anim + 8) % ($track.Width + 130)
+            $fill.Width = 130; $fill.Left = $S.Anim - 130
+        }
+        # tâches de fond
+        if ($S.Bg.ContainsKey('croc')) {
+            $r = Receive-Bg 'croc'
+            if ($r) {
+                if ($r.Ok) { $S.Croc = [string]$r.Value } else { Show-Error ("Impossible d'installer le module de transfert. Vérifie la connexion internet.`n" + $r.Error) ; return }
+                if ($Mode -eq 'recv' -and $S.View -eq 'prep') { Start-RecvCroc }
+            }
+        }
+        if ($S.Bg.ContainsKey('scan')) {
+            $r = Receive-Bg 'scan'
+            if ($r) { if ($r.Ok) { $S.Scan = $r.Value } else { Show-Error ("Impossible de lire le dossier.`n" + $r.Error); return } }
+        }
+        if ($Mode -eq 'send' -and $S.View -eq 'prep' -and $S.Scan -and $S.Croc) { Send-Ready }
+
+        # nouvelle tentative programmée
+        if ($S.RetryAt -and (Get-Date) -ge $S.RetryAt) {
+            $S.RetryAt = $null
+            if ($Mode -eq 'send') { Start-SendCroc } else { Start-RecvCroc }
+        }
+
+        # sortie du moteur
+        if ($S.Running -and $S.Proc) {
+            Read-Croc
+            if ($S.Proc -and $S.Proc.HasExited -and -not ($S.Readers | Where-Object { -not $_.Done })) {
+                $code = $S.Proc.ExitCode
+                $S.Running = $false; $S.Proc = $null; Set-Awake $false
+                if ($S.View -eq 'error') { return }
+                if ($code -eq 0) {
+                    if ($Mode -eq 'send') { Send-Finished } else { Recv-Finished }
+                } else {
+                    $S.Retries++
+                    $max = if ($Mode -eq 'send') { 200 } else { 120 }
+                    if ($S.Retries -gt $max) {
+                        $last = ($S.Lines | Select-Object -Last 3) -join "`n"
+                        if ($Mode -eq 'send') { Show-Error "La connexion n'a pas pu être rétablie.`n$last" }
+                        else { Show-Error "Impossible de joindre l'expéditeur. Vérifie que sa fenêtre est toujours ouverte, puis clique sur Réessayer.`n$last" }
+                        return
+                    }
+                    $S.RetryAt = (Get-Date).AddSeconds(4)
+                    $title = if ($S.GotProgress) { 'Connexion perdue, reprise automatique…' } elseif ($Mode -eq 'send') { 'Envoie ce message à ton client' } else { 'Connexion à l''expéditeur…' }
+                    if ($S.GotProgress -or $Mode -eq 'recv') {
+                        $keepSub = $lblSub.Text
+                        Set-View 'retry' $title ($(if ($S.GotProgress) { 'Le transfert reprendra exactement là où il s''est arrêté.' } else { $keepSub }))
+                        Set-Buttons '' 'Annuler'
+                        $lblStat.Text = "Nouvel essai dans quelques secondes (essai $($S.Retries))…"
+                    }
+                }
+            }
+        }
+    } catch {
+        $timer.Stop()
+        [Windows.Forms.MessageBox]::Show("Erreur inattendue : $($_.Exception.Message)", 'Transfert sécurisé') | Out-Null
+        $timer.Start()
+    }
+})
+
+# ---------------------------------------------------------------- événements
+$onDragEnter = { if ($_.Data.GetDataPresent([Windows.Forms.DataFormats]::FileDrop) -and $S.View -eq 'idle') { $_.Effect = [Windows.Forms.DragDropEffects]::Copy } }
+$onDrop = { if ($S.View -eq 'idle') { Start-Send ([string[]]$_.Data.GetData([Windows.Forms.DataFormats]::FileDrop)) } }
+foreach ($c in @($form, $drop)) { $c.AllowDrop = $true; $c.Add_DragEnter($onDragEnter); $c.Add_DragDrop($onDrop) }
+$drop.Add_Click({
+    $dlg = New-Object Windows.Forms.FolderBrowserDialog
+    $dlg.Description = 'Choisis le dossier à envoyer'
+    $dlg.ShowNewFolderButton = $false
+    if ($dlg.ShowDialog($form) -eq [Windows.Forms.DialogResult]::OK) { Start-Send @($dlg.SelectedPath) }
+})
+$txtCode.Add_KeyDown({ if ($_.KeyCode -eq 'Enter') { $_.SuppressKeyPress = $true; $btn1.PerformClick() } })
+
+$btn1.Add_Click({
+    switch ($S.View) {
+        'wait'  { if (Copy-Text $box.Text) { $lblSub.Text = '✓ Message copié à nouveau. Colle-le à ton client (Ctrl + V).' } }
+        'done'  { if ($Mode -eq 'send') { Reset-Send } else { try { Start-Process explorer.exe $S.Dest } catch {} } }
+        'code'  { $S.Code = Get-CodeFrom $txtCode.Text; if ($S.Code) { Start-Recv } }
+        'error' { $S.Retries = 0; if ($Mode -eq 'send') { if ($S.Code -and $S.Paths.Count) { Set-View 'wait' 'Envoie ce message à ton client' 'Le message reste valable : même lien, même code.'; Set-Buttons 'Copier le message' 'Annuler'; $lblStat.Text = 'En attente de ton client…'; Start-SendCroc } else { Reset-Send } } else { Start-Recv } }
+    }
+})
+$btn2.Add_Click({
+    if ($S.View -in @('done', 'error')) { $form.Close(); return }
+    $q = [Windows.Forms.MessageBox]::Show('Arrêter le transfert ?', 'Transfert sécurisé', 'YesNo', 'Question')
+    if ($q -ne 'Yes') { return }
+    $S.RetryAt = $null
+    if ($Mode -eq 'send') { Reset-Send } else { Stop-Croc; $form.Close() }
+})
+$form.Add_FormClosing({
+    if ($S.Running -or $S.RetryAt) {
+        $q = [Windows.Forms.MessageBox]::Show("Un transfert est en cours. Fermer quand même ?`n(Il pourra reprendre plus tard avec le même lien.)", 'Transfert sécurisé', 'YesNo', 'Warning')
+        if ($q -ne 'Yes') { $_.Cancel = $true; return }
+    }
+    $S.RetryAt = $null
+    Stop-Croc
+    $timer.Stop()
+})
+$form.Add_Shown({ $form.Activate() })
+
+# ---------------------------------------------------------------- démarrage
+if ($Mode -eq 'send') {
+    Install-Shortcut
+    Reset-Send
+    Start-Bg 'croc' $InstallCroc @($AppDir)
+    $init = @()
+    if ($env:TS_ARGS) { foreach ($m in [regex]::Matches($env:TS_ARGS, '"([^"]+)"|(\S+)')) { $init += $(if ($m.Groups[1].Success) { $m.Groups[1].Value } else { $m.Groups[2].Value }) } }
+    elseif ($env:TS_ARG) { $init += $env:TS_ARG }
+    if ($init.Count) { Start-Send $init }
+} else {
+    $S.Code = Get-CodeFrom "$env:TS_CODE"
+    Start-Recv
+}
+$timer.Start()
+[void][Windows.Forms.Application]::Run($form)
