@@ -1418,5 +1418,8 @@ if ($Mode -eq 'send') {
 Init-Browse
 $fxTimer.Start()
 $logicTimer.Start()
-$win.Add_ContentRendered({ $win.Activate() | Out-Null })
+$win.Add_ContentRendered({
+    if ($Mode -eq 'recv') { $win.Topmost = $true; $win.Activate() | Out-Null; $win.Topmost = $false; $win.Focus() | Out-Null }
+    else { $win.Activate() | Out-Null }
+})
 [void]$win.ShowDialog()
