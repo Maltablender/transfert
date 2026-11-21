@@ -73,13 +73,51 @@ h1 em{font:italic 400 1.12em/1 "Instrument Serif",Georgia,serif;letter-spacing:-
 .step b i{font-style:normal;width:19px;height:19px;border-radius:50%;display:grid;place-items:center;font-size:11px;background:rgba(255,255,255,.08)}
 .step.on{border-color:rgba(60,230,200,.35);background:rgba(60,230,200,.05)}
 .step.on b i{background:var(--a3);color:#06231E}
-details{margin-top:18px;text-align:left;border-radius:14px;border:1px solid var(--line);padding:0 14px}
-summary{cursor:pointer;list-style:none;min-height:44px;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--soft)}
-summary::-webkit-details-marker{display:none}
-summary::after{content:"+";font-size:18px;color:var(--mute)}
-details[open] summary::after{content:"-"}
-details p{margin:0 0 14px;font-size:13px;color:var(--mute);line-height:1.6}
-details p b{color:var(--soft);font-weight:600}
+.guide{margin-top:18px;text-align:left;border-radius:18px;border:1px solid var(--line);background:rgba(255,255,255,.02);overflow:hidden}
+.gh{width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;background:none;border:0;color:var(--ink);font:inherit;cursor:pointer;text-align:left;min-height:56px}
+.gh:focus-visible{outline:2px solid var(--a2);outline-offset:-2px;border-radius:18px}
+.gh .sh{flex:none;width:34px;height:34px;border-radius:11px;background:rgba(77,163,255,.14);display:grid;place-items:center}
+.gh .sh svg{width:18px;height:18px}
+.gh b{display:block;font-size:14px;font-weight:600}
+.gh small{display:block;font-size:12px;color:var(--mute)}
+.gh .chev{margin-left:auto;flex:none;width:18px;height:18px;transition:transform .3s;color:var(--mute)}
+.guide.open .gh .chev{transform:rotate(180deg)}
+.gb{display:grid;grid-template-rows:0fr;transition:grid-template-rows .4s cubic-bezier(.2,.7,.2,1)}
+.guide.open .gb{grid-template-rows:1fr}
+.gb>div{overflow:hidden}
+.gin{padding:2px 16px 16px}
+.tabs{display:flex;gap:6px;padding:4px;border-radius:12px;background:rgba(0,0,0,.3);margin-bottom:12px}
+.tabs button{flex:1;min-height:36px;border:0;border-radius:9px;background:none;color:var(--mute);font:600 12.5px Geist,sans-serif;cursor:pointer}
+.tabs button.on{background:rgba(255,255,255,.08);color:var(--ink)}
+.gprog{height:4px;border-radius:4px;background:rgba(255,255,255,.07);margin-bottom:12px;overflow:hidden}
+.gprog i{display:block;height:100%;width:0;background:var(--grad);transition:width .5s cubic-bezier(.2,.7,.2,1)}
+.gs{display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;padding:12px 0;border-top:1px solid var(--line);opacity:.45;transition:opacity .3s}
+.gprog+.gs{border-top:0}
+.gs.cur,.gs.done{opacity:1}
+.gs .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600;background:rgba(255,255,255,.08);transition:background .3s,transform .3s}
+.gs.cur .n{background:var(--grad);color:#fff;box-shadow:0 0 0 4px rgba(77,163,255,.15)}
+.gs.done .n{background:var(--a3);color:#06231E;transform:scale(1.05)}
+.gs h4{margin:3px 0 4px;font-size:13.5px;font-weight:600}
+.gs p{margin:0;font-size:12.8px;color:var(--mute);line-height:1.55}
+.gs p b{color:var(--soft);font-weight:600}
+.mock{margin-top:10px;border-radius:12px;overflow:hidden;font:12px "Segoe UI",Geist,sans-serif}
+.ss{background:#0F5FA8;color:#fff;padding:12px 14px}
+.ss .t{font-size:15px;font-weight:600;margin-bottom:6px}
+.ss .d{font-size:11.5px;opacity:.85;line-height:1.45}
+.ss .lk{display:inline-block;margin-top:8px;text-decoration:underline;font-weight:600}
+.ss .row{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+.ss .row span{padding:5px 12px;border:1px solid rgba(255,255,255,.7);font-size:11.5px}
+.hl{position:relative;border-radius:4px;animation:hl 1.6s ease-in-out infinite}
+@keyframes hl{0%,100%{box-shadow:0 0 0 0 rgba(255,214,10,.0)}50%{box-shadow:0 0 0 4px rgba(255,214,10,.85)}}
+.dlbar{display:flex;align-items:center;gap:10px;background:#202124;color:#E8EAED;padding:10px 12px}
+.dlbar .f{flex:1;min-width:0;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dlbar span.k{padding:4px 10px;border-radius:6px;background:#8AB4F8;color:#202124;font-weight:600;font-size:11.5px}
+.gs .go{margin-top:10px;display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 14px;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:var(--ink);font:600 12.5px Geist,sans-serif;cursor:pointer;transition:background .2s,border-color .2s}
+.gs .go:hover{background:rgba(255,255,255,.09)}
+.gs.done .go{border-color:rgba(60,230,200,.4);background:rgba(60,230,200,.1);color:#BFF5EA}
+.gfin{display:none;align-items:center;gap:10px;margin-top:6px;padding:12px 14px;border-radius:14px;background:rgba(60,230,200,.08);border:1px solid rgba(60,230,200,.28);color:#D2F7EF;font-size:13px}
+.gfin.show{display:flex;animation:rise .4s ease-out}
+.gnote{margin:12px 0 0;font-size:11.8px;color:#6B7280;line-height:1.5}
 footer{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 18px;font-size:12.5px;color:#5F6574}
 footer span{display:inline-flex;align-items:center;gap:6px}
 footer svg{width:13px;height:13px}
@@ -131,10 +169,58 @@ footer svg{width:13px;height:13px}
         <div class="step" id="s3"><b><i>3</i>C'est tout</b>le dossier arrive</div>
       </div>
 
-      <details>
-        <summary>Windows affiche un avertissement ?</summary>
-        <p>C'est normal pour un petit programme récent. Clique sur <b>Informations complémentaires</b>, puis sur <b>Exécuter quand même</b>. Le transfert est privé : il va directement de l'expéditeur à toi, chiffré de bout en bout.</p>
-      </details>
+      <section class="guide" id="guide">
+        <button class="gh" id="gh" type="button" aria-expanded="false" aria-controls="gbody">
+          <span class="sh"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6z" stroke="#4DA3FF" stroke-width="1.8" stroke-linejoin="round"/><path d="m9 12 2.2 2.2L15.5 10" stroke="#3CE6C8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span><b>Windows affiche un avertissement ?</b><small>Guide en 3 étapes · 20 secondes</small></span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="gb" id="gbody"><div><div class="gin">
+          <div class="tabs" role="tablist">
+            <button type="button" data-b="chrome">Chrome</button>
+            <button type="button" data-b="edge">Edge</button>
+            <button type="button" data-b="firefox">Firefox</button>
+          </div>
+          <div class="gprog"><i id="gbar"></i></div>
+
+          <div class="gs cur" data-i="0">
+            <span class="n">1</span>
+            <div>
+              <h4>Garde le fichier téléchargé</h4>
+              <p id="g1txt"></p>
+              <div class="mock"><div class="dlbar"><span class="f">Recevoir avec Onde.bat</span><span class="k hl" id="g1btn">Conserver</span></div></div>
+              <button class="go" type="button">C'est fait</button>
+            </div>
+          </div>
+
+          <div class="gs" data-i="1">
+            <span class="n">2</span>
+            <div>
+              <h4>Passe l'écran bleu de Windows</h4>
+              <p>Double-clique sur le fichier. Si un écran bleu s'affiche, clique sur <b>Informations complémentaires</b>, puis sur <b>Exécuter quand même</b>.</p>
+              <div class="mock"><div class="ss" id="ssmock">
+                <div class="t">Windows a protégé votre ordinateur</div>
+                <div class="d">Microsoft Defender SmartScreen a empêché le démarrage d'une application non reconnue.</div>
+                <span class="lk hl" id="sslink">Informations complémentaires</span>
+                <div class="row"><span id="ssrun" style="display:none" class="hl">Exécuter quand même</span><span>Ne pas exécuter</span></div>
+              </div></div>
+              <button class="go" type="button">C'est fait</button>
+            </div>
+          </div>
+
+          <div class="gs" data-i="2">
+            <span class="n">3</span>
+            <div>
+              <h4>Onde s'ouvre : choisis où enregistrer</h4>
+              <p>Clique sur <b>Recevoir ici</b> (ou <b>Changer…</b> pour un autre dossier). Si Windows demande l'accès au réseau, clique sur <b>Autoriser</b>. La progression s'affiche et le dossier s'ouvre tout seul à la fin.</p>
+              <button class="go" type="button">C'est fait</button>
+            </div>
+          </div>
+
+          <div class="gfin" id="gfin"><svg viewBox="0 0 24 24" fill="none" width="20" height="20"><circle cx="12" cy="12" r="9" stroke="#3CE6C8" stroke-width="1.8"/><path d="m8 12.2 2.7 2.7L16 9.6" stroke="#3CE6C8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>C'est parti : laisse la fenêtre Onde ouverte jusqu'à la fin.</div>
+          <p class="gnote">Rien n'est désactivé sur ton PC : cet avertissement s'affiche pour tout petit programme récent. Il ne concerne que ce fichier, et le transfert reste chiffré de bout en bout.</p>
+        </div></div></div>
+      </section>
     </div></section>
   </main>
 
@@ -182,7 +268,48 @@ footer svg{width:13px;height:13px}
     $('s1').classList.add('on');
     $('s2').classList.add('on');
     $('dltxt').textContent = 'Télécharger à nouveau';
+    openGuide(true);
   });
+
+  /* ---- guide pas à pas ---- */
+  const guide = $('guide'), gh = $('gh');
+  const steps = [...document.querySelectorAll('.gs')];
+  const TXT = {
+    chrome: 'En haut à droite de Chrome, l\'icône de téléchargement s\'affiche. Si Chrome signale le fichier, clique sur <b>Conserver</b>, puis sur <b>Conserver quand même</b> si on te le redemande.',
+    edge: 'Dans le panneau des téléchargements d\'Edge, passe la souris sur le fichier, clique sur <b>…</b> puis <b>Conserver</b>. Ensuite <b>Afficher plus</b> et <b>Conserver quand même</b>.',
+    firefox: 'Clique sur la flèche de téléchargement en haut à droite. Si Firefox bloque le fichier, fais un clic droit dessus puis <b>Autoriser le téléchargement</b>.'
+  };
+  const BTN = {chrome: 'Conserver', edge: 'Conserver', firefox: 'Autoriser le téléchargement'};
+  const setBrowser = b => {
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.b === b));
+    $('g1txt').innerHTML = TXT[b]; $('g1btn').textContent = BTN[b];
+  };
+  const ua = navigator.userAgent;
+  setBrowser(/Edg\//.test(ua) ? 'edge' : /Firefox\//.test(ua) ? 'firefox' : 'chrome');
+  document.querySelectorAll('.tabs button').forEach(x => x.addEventListener('click', () => setBrowser(x.dataset.b)));
+  const openGuide = (scroll) => {
+    guide.classList.add('open'); gh.setAttribute('aria-expanded', 'true');
+    if (scroll) setTimeout(() => guide.scrollIntoView({behavior: 'smooth', block: 'center'}), 250);
+  };
+  gh.addEventListener('click', () => {
+    const o = guide.classList.toggle('open'); gh.setAttribute('aria-expanded', String(o));
+  });
+  let done = 0;
+  const render = () => {
+    steps.forEach((s, i) => { s.classList.toggle('done', i < done); s.classList.toggle('cur', i === done); s.querySelector('.go').textContent = i < done ? '\u2713 Fait' : 'C\'est fait'; });
+    $('gbar').style.width = (done / steps.length * 100) + '%';
+    $('gfin').classList.toggle('show', done >= steps.length);
+    if (done >= 3) { $('s3').classList.add('on'); }
+  };
+  steps.forEach((s, i) => s.querySelector('.go').addEventListener('click', () => { done = Math.max(done, i + 1); render(); }));
+  /* petite démo de l'écran bleu : le lien puis le bouton */
+  let ssPhase = 0;
+  setInterval(() => {
+    ssPhase = 1 - ssPhase;
+    $('sslink').classList.toggle('hl', ssPhase === 0);
+    $('ssrun').style.display = ssPhase === 1 ? '' : 'none';
+  }, 2200);
+  render();
 }
 </script>
 </body>
