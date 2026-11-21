@@ -986,7 +986,13 @@ function Start-SelfTest {
         $psi.UseShellExecute = $false; $psi.CreateNoWindow = $false; $psi.WindowStyle = 'Normal'
         $psi.EnvironmentVariables['TS_MODE'] = 'recv'
         $psi.EnvironmentVariables['TS_CODE'] = $S.Code
+        $psi.EnvironmentVariables['TS_POS'] = 'right'
         [Diagnostics.Process]::Start($psi) | Out-Null
+        try {
+            $wa = [System.Windows.SystemParameters]::WorkArea
+            $win.Left = $wa.Left + 24
+            $win.Top = $wa.Top + [Math]::Max(8, ($wa.Height - $win.Height) / 2)
+        } catch {}
     } catch {}
 }
 function Clear-RecvTraces {
@@ -1461,7 +1467,16 @@ Init-Browse
 $fxTimer.Start()
 $logicTimer.Start()
 $win.Add_ContentRendered({
-    if ($Mode -eq 'recv') { $win.Topmost = $true; $win.Activate() | Out-Null; $win.Topmost = $false; $win.Focus() | Out-Null }
+    if ($Mode -eq 'recv') {
+        if ($env:TS_POS -eq 'right') {
+            try {
+                $wa = [System.Windows.SystemParameters]::WorkArea
+                $win.Left = $wa.Right - $win.Width - 24
+                $win.Top = $wa.Top + [Math]::Max(8, ($wa.Height - $win.Height) / 2)
+            } catch {}
+        }
+        $win.Topmost = $true; $win.Activate() | Out-Null; $win.Topmost = $false; $win.Focus() | Out-Null
+    }
     else { $win.Activate() | Out-Null }
 })
 [void]$win.ShowDialog()
