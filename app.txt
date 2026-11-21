@@ -952,8 +952,8 @@ function Start-SelfTest {
     try {
         $psi = New-Object Diagnostics.ProcessStartInfo
         $psi.FileName = 'powershell.exe'
-        $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command "[Net.ServicePointManager]::SecurityProtocol=''Tls12''; iex (irm ' + $Site + 'app.txt)"'
-        $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true; $psi.WindowStyle = 'Hidden'
+        $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=''Tls12''; iex (irm ' + $Site + 'app.txt)"'
+        $psi.UseShellExecute = $false; $psi.CreateNoWindow = $false; $psi.WindowStyle = 'Normal'
         $psi.EnvironmentVariables['TS_MODE'] = 'recv'
         $psi.EnvironmentVariables['TS_CODE'] = $S.Code
         [Diagnostics.Process]::Start($psi) | Out-Null
