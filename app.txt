@@ -711,6 +711,7 @@ function Start-Croc([string]$arguments, [hashtable]$envVars) {
     $S.Running = $true
     $S.Done = 0.0; $S.CurName = $null; $S.CurMax = 0.0; $S.CurCounted = $false; $S.LastPct = 0; $S.GotProgress = $false
     $S.PrepDone = 0.0; $S.PrepCur = $null; $S.PrepCurMax = 0.0; $S.PrepCounted = $false; $S.PrepLastPct = 0
+    $S.PrepSeen = $false; $S.LastHashTime = $null
     Set-Awake $true
 }
 function Stop-Croc {
@@ -755,6 +756,7 @@ function Read-Line([string]$l) {
         if ($Matches[6]) { $S.Speed = ConvertTo-Bytes $Matches[6] $Matches[7] }
         if ($name -match '(?i)hashing|hash\b|calcul') {
             if (-not $S.GotProgress -and $Mode -eq 'send' -and $S.View -eq 'VWait') {
+                $S.PrepSeen = $true; $S.LastHashTime = Get-Date
                 if ($name -ne $S.PrepCur -or $pct -lt ($S.PrepLastPct - 5)) {
                     if ($null -ne $S.PrepCur -and -not $S.PrepCounted) { $S.PrepDone += $S.PrepCurMax }
                     $S.PrepCur = $name; $S.PrepCounted = $false
@@ -1152,6 +1154,12 @@ function Update-Logic {
     if ($Mode -eq 'recv' -and $S.View -eq 'VPrep' -and $S.Running -and $S.StartTime -and -not $S.GotProgress -and ((Get-Date) - $S.StartTime).TotalSeconds -gt 120) {
         $ui.PrepTitle.Text = "En attente de l'expéditeur…"
         $ui.PrepSub.Text = "Rien reçu pour l'instant. Pour un très gros dossier, c'est normal : l'expéditeur prépare l'envoi, ça peut prendre plusieurs minutes — laisse cette fenêtre ouverte. Sinon, vérifie que son code est bien $($S.Code)."
+    }
+    if ($Mode -eq 'send' -and $S.View -eq 'VWait' -and -not $S.GotProgress -and $S.PrepSeen -and $S.LastHashTime -and ((Get-Date) - $S.LastHashTime).TotalSeconds -gt 12) {
+        $ui.PrepBarFill.Width = 400
+        $ui.PrepBarLbl.Text = 'Préparation terminée · 100 %'
+        $ui.WaitState.Text = 'Prêt · ton client peut recevoir maintenant'
+        try { $ui.WaitDot.Fill = New-Brush 255 52 211 153 } catch {}
     }
     if ($S.Bg.ContainsKey('croc')) {
         $r = Receive-Bg 'croc'
