@@ -680,6 +680,13 @@ function Read-Line([string]$l) {
         $name = $Matches[1].Trim(); $pct = [int]$Matches[2]
         $cur = ConvertTo-Bytes $Matches[3] $Matches[5]; $max = ConvertTo-Bytes $Matches[4] $Matches[5]
         if ($Matches[6]) { $S.Speed = ConvertTo-Bytes $Matches[6] $Matches[7] }
+        if ($name -match '(?i)hashing|hash\b|calcul') {
+            if (-not $S.GotProgress) {
+                if ($S.View -eq 'VWait') { $ui.WaitState.Text = 'Préparation du dossier…'; $ui.WaitInfo.Text = 'Vérification des fichiers avant l''envoi. Le transfert démarre juste après.' }
+                elseif ($S.View -eq 'VPrep') { $ui.PrepTitle.Text = 'Préparation…'; $ui.PrepSub.Text = 'Vérification des fichiers…' }
+            } elseif ($S.View -eq 'VRun') { $ui.CurFile.Text = 'Vérification finale des fichiers…'; if ($S.Speed -gt 0) { $ui.StSpeed.Text = (Format-Size $S.Speed) + '/s' } }
+            return
+        }
         if ($name -ne $S.CurName -or $pct -lt ($S.LastPct - 5)) {
             if ($null -ne $S.CurName -and -not $S.CurCounted) { $S.Done += $S.CurMax }
             $S.CurName = $name; $S.CurCounted = $false
@@ -689,11 +696,12 @@ function Read-Line([string]$l) {
         $S.Overall = $S.Done + $(if ($S.CurCounted) { 0 } else { $cur })
         if (-not $S.GotProgress) { $S.GotProgress = $true; $S.Retries = 0; Show-Run }
         $total = if ($S.Total -gt 0) { $S.Total } else { $max }
-        $S.TargetPct = if ($total -gt 0) { [math]::Min(99.9, 100 * $S.Overall / $total) } else { $pct }
-        $ui.StDone.Text = (Format-Size $S.Overall) + ' / ' + (Format-Size $total)
+        $shown = if ($total -gt 0) { [math]::Min($S.Overall, $total) } else { $S.Overall }
+        $S.TargetPct = if ($total -gt 0) { [math]::Min(99.9, 100 * $shown / $total) } else { $pct }
+        $ui.StDone.Text = (Format-Size $shown) + ' / ' + (Format-Size $total)
         if ($S.Speed -gt 0) {
             $ui.StSpeed.Text = (Format-Size $S.Speed) + '/s'
-            $ui.StEta.Text = Format-Dur (($total - $S.Overall) / $S.Speed)
+            if ($total -gt $shown) { $ui.StEta.Text = Format-Dur (($total - $shown) / $S.Speed) } else { $ui.StEta.Text = 'presque fini' }
         }
         if ($name) { $ui.CurFile.Text = $name }
     }
