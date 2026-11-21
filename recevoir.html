@@ -48,7 +48,13 @@ h1{font:700 clamp(26px,6vw,32px)/1.15 Sora,Inter,sans-serif;letter-spacing:-.02e
 .after{display:none;margin-top:18px;padding:14px 16px;border-radius:14px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.3);font-size:14px;color:#cfeff6;text-align:left}
 .after.show{display:block;animation:in .35s ease-out}
 @keyframes in{from{opacity:0;transform:translateY(6px)}}
-.bad{display:none;margin-top:20px;color:#FBBF24;font-size:14px}
+.bad{display:none;margin-top:14px;color:#FBBF24;font-size:14px}
+.codebox{display:none;margin-top:22px;text-align:left}
+.codebox.show{display:block}
+.codebox label{display:block;font-size:13px;font-weight:600;color:#C9D0DC;margin-bottom:8px}
+.codebox input{width:100%;min-height:52px;border-radius:14px;border:1px solid #2C3240;background:#0F1218;color:var(--ink);font:600 17px ui-monospace,Consolas,monospace;padding:0 16px;letter-spacing:.02em}
+.codebox input:focus{outline:none;border-color:var(--a2);box-shadow:0 0 0 3px rgba(34,211,238,.18)}
+.codebox input.ok{border-color:var(--ok)}
 footer{margin-top:20px;text-align:center;font-size:12.5px;color:#5F6778}
 @media(max-width:420px){.card{padding:28px 20px 24px}.steps{grid-template-columns:minmax(0,1fr)}}
 @media(prefers-reduced-motion:reduce){.wake,.g1,.g2{animation:none}}
@@ -72,12 +78,16 @@ footer{margin-top:20px;text-align:center;font-size:12.5px;color:#5F6778}
     <div class="name" id="name">Ton dossier</div>
     <div class="meta" id="meta">Copie identique à l'original, rien ne manque</div>
 
+    <div class="codebox" id="codebox">
+      <label for="code">Code d'accès (dans le message reçu)</label>
+      <input id="code" placeholder="1234-abcde-fghjk-mnpqr" autocomplete="off" spellcheck="false" inputmode="text">
+    </div>
     <a class="btn" id="dl" href="Recevoir.bat" download="Recevoir avec Sillage.bat">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19.5h14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Télécharger
     </a>
     <div class="after" id="after">Ouvre maintenant le fichier <b>« Recevoir avec Sillage »</b> qui vient d'arriver (en haut ou en bas de ton navigateur). La réception démarre toute seule, avec sa progression.</div>
-    <div class="bad" id="bad">Ce lien semble incomplet. Demande à l'expéditeur de te le renvoyer.</div>
+    <div class="bad" id="bad">Colle d'abord le code d'accès qui se trouve dans le message reçu.</div>
 
     <div class="steps">
       <div class="step" id="s1"><b>1. Télécharge</b>un petit fichier</div>
@@ -90,29 +100,41 @@ footer{margin-top:20px;text-align:center;font-size:12.5px;color:#5F6778}
 </main>
 <script>
 {
-  const parts = location.hash.slice(1).split('/');
-  const ok = /^[0-9]{4}(-[a-z0-9]{5}){3}$/.test(parts[0] || '');
+  const RX = /[0-9]{4}(-[a-z0-9]{5}){3}/;
+  const qs = new URLSearchParams(location.search);
+  let parts = location.hash.slice(1).split('/');
+  if (!RX.test(parts[0] || '') && qs.get('c')) parts = [qs.get('c'), qs.get('n') || '', qs.get('s') || ''];
   const fmt = b => {
     const u = [['To',1e12],['Go',1e9],['Mo',1e6],['Ko',1e3]];
     for (const [n, v] of u) if (b >= v) return (b / v).toLocaleString('fr-FR', {maximumFractionDigits: b / v >= 100 ? 0 : 1}) + '\u00a0' + n;
     return b + '\u00a0o';
   };
-  const nameEl = document.getElementById('name');
-  const metaEl = document.getElementById('meta');
-  const dl = document.getElementById('dl');
-  if (parts[1]) { try { nameEl.textContent = decodeURIComponent(parts[1]); } catch (e) { nameEl.textContent = parts[1]; } }
+  const $ = id => document.getElementById(id);
+  const dl = $('dl'), input = $('code'), bad = $('bad');
+  if (parts[1]) { try { $('name').textContent = decodeURIComponent(parts[1]); } catch (e) { $('name').textContent = parts[1]; } }
   const size = Number(parts[2]);
-  if (size > 0) metaEl.textContent = fmt(size) + ' · copie identique à l’original';
-  if (ok) {
-    const bat = '@echo off\r\nchcp 65001 >nul\r\ntitle Sillage\r\nset "TS_MODE=recv"\r\nset "TS_CODE=' + parts[0] + '"\r\npowershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=\'Tls12\'; iex (irm https://maltablender.github.io/transfert/app.txt)"\r\n';
+  if (size > 0) $('meta').textContent = fmt(size) + ' · copie identique à l\u2019original';
+  let code = '';
+  const setCode = c => {
+    code = c;
+    const bat = '@echo off\r\nchcp 65001 >nul\r\ntitle Sillage\r\nset "TS_MODE=recv"\r\nset "TS_CODE=' + c + '"\r\npowershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=\'Tls12\'; iex (irm https://maltablender.github.io/transfert/app.txt)"\r\n';
     dl.href = URL.createObjectURL(new Blob([bat], {type: 'application/octet-stream'}));
-  } else if (location.hash.length > 1) {
-    document.getElementById('bad').style.display = 'block';
+  };
+  const m0 = (parts[0] || '').match(RX);
+  if (m0 && m0[0] === parts[0]) setCode(m0[0]);
+  else {
+    $('codebox').classList.add('show');
+    input.addEventListener('input', () => {
+      const m = input.value.toLowerCase().match(RX);
+      if (m) { setCode(m[0]); input.classList.add('ok'); bad.style.display = 'none'; }
+      else { code = ''; input.classList.remove('ok'); }
+    });
   }
-  dl.addEventListener('click', () => {
-    document.getElementById('after').classList.add('show');
-    document.getElementById('s1').classList.add('on');
-    document.getElementById('s2').classList.add('on');
+  dl.addEventListener('click', e => {
+    if (!code) { e.preventDefault(); bad.style.display = 'block'; input.focus(); return; }
+    $('after').classList.add('show');
+    $('s1').classList.add('on');
+    $('s2').classList.add('on');
     dl.lastChild.textContent = ' Télécharger à nouveau';
   });
 }

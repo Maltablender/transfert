@@ -33,6 +33,7 @@ $Xaml = @'
       <GradientStop Color="#22D3EE" Offset="1"/>
     </LinearGradientBrush>
     <Style x:Key="Primary" TargetType="Button">
+      <Setter Property="Background" Value="{StaticResource Accent}"/>
       <Setter Property="Foreground" Value="White"/>
       <Setter Property="FontSize" Value="15"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
@@ -41,7 +42,7 @@ $Xaml = @'
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="bd" CornerRadius="14" Background="{StaticResource Accent}">
+            <Border x:Name="bd" CornerRadius="14" Background="{TemplateBinding Background}">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
@@ -53,6 +54,7 @@ $Xaml = @'
       </Setter>
     </Style>
     <Style x:Key="Ghost" TargetType="Button">
+      <Setter Property="Background" Value="#1A1E27"/>
       <Setter Property="Foreground" Value="#DDE2EC"/>
       <Setter Property="FontSize" Value="15"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
@@ -61,12 +63,12 @@ $Xaml = @'
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="bd" CornerRadius="14" Background="#1A1E27" BorderBrush="#2C3240" BorderThickness="1">
+            <Border x:Name="bd" CornerRadius="14" Background="{TemplateBinding Background}" BorderBrush="#2C3240" BorderThickness="1">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#222734"/></Trigger>
-              <Trigger Property="IsPressed" Value="True"><Setter TargetName="bd" Property="Background" Value="#2A3040"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="BorderBrush" Value="#454E63"/></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="bd" Property="Opacity" Value="0.8"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
@@ -211,14 +213,24 @@ $Xaml = @'
           <TextBlock Style="{StaticResource H1}" Text="Prêt à envoyer"/>
           <TextBlock x:Name="WaitSub" Style="{StaticResource Sub}"/>
           <Border CornerRadius="16" Background="#151922" BorderBrush="#252B38" BorderThickness="1" Margin="0,22,0,0" Padding="18,16">
-            <TextBox x:Name="MsgBox" Background="Transparent" BorderThickness="0" Foreground="#E6EAF2" FontSize="14.5" TextWrapping="Wrap" IsReadOnly="True" CaretBrush="#7C5CFF" SelectionBrush="#7C5CFF"/>
+            <TextBox x:Name="MsgBox" Background="Transparent" BorderThickness="0" Foreground="#E6EAF2" FontSize="14" TextWrapping="Wrap" IsReadOnly="True" CaretBrush="#7C5CFF" SelectionBrush="#7C5CFF"/>
           </Border>
-          <Grid Margin="0,18,0,0">
+          <Border CornerRadius="14" Background="#11141B" BorderBrush="#252B38" BorderThickness="1" Margin="0,10,0,0" Padding="16,9">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="Code d'accès (à envoyer si ton client le demande)" FontSize="11.5" Foreground="#6F778A"/>
+                <TextBlock x:Name="CodeText" FontFamily="Consolas" FontSize="17" FontWeight="SemiBold" Foreground="#F4F6FA" Margin="0,2,0,0"/>
+              </StackPanel>
+              <Button x:Name="BtnCopyCode" Grid.Column="1" Style="{StaticResource Ghost}" Height="40" Width="140" FontSize="13" Content="Copier le code" VerticalAlignment="Center"/>
+            </Grid>
+          </Border>
+          <Grid Margin="0,14,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
             <Button x:Name="BtnCopy" Style="{StaticResource Primary}" Content="Copier le message"/>
             <Button x:Name="BtnCancelWait" Grid.Column="2" Style="{StaticResource Ghost}" Content="Annuler"/>
           </Grid>
-          <Border CornerRadius="14" Background="#11141B" Margin="0,22,0,0" Padding="16,14">
+          <Border CornerRadius="14" Background="#11141B" Margin="0,14,0,0" Padding="16,12">
             <StackPanel>
               <StackPanel Orientation="Horizontal">
                 <Ellipse x:Name="WaitDot" Width="9" Height="9" Fill="#22D3EE" VerticalAlignment="Center"/>
@@ -339,7 +351,7 @@ try {
     $win = [Windows.Markup.XamlReader]::Parse($Xaml)
     $ui = @{}
     foreach ($n in 'Root','TitleBar','BtnMin','BtnClose','VIdle','Drop','DropRect','DropFloat','VPrep','SpinRot','PrepTitle','PrepSub',
-                   'VWait','WaitSub','MsgBox','BtnCopy','BtnCancelWait','WaitDot','WaitState','WaitInfo','WaitWarn',
+                   'VWait','WaitSub','MsgBox','BtnCopy','BtnCopyCode','CodeText','BtnCancelWait','WaitDot','WaitState','WaitInfo','WaitWarn',
                    'VRun','RunTitle','RunSub','Pct','BarTrack','BarFill','Fx','StDone','StSpeed','StEta','CurFile','BtnCancelRun',
                    'VDone','CheckScale','DoneTitle','DoneSub','DoneVerifyBox','DoneVerify','BtnDone1','BtnDone2',
                    'VError','ErrTitle','ErrSub','BtnErr1','BtnErr2','VCode','CodeBox','BtnCode','Foot') {
@@ -360,7 +372,7 @@ $S = @{
     Bg = @{}; Croc = $null; Scan = $null; Manifest = $null; Lines = New-Object System.Collections.Generic.List[string]
     View = ''; Dest = ''; StartTime = $null; GotProgress = $false
     TargetPct = 0.0; ShownPct = 0.0; Particles = New-Object System.Collections.ArrayList; Tick = 0
-    SndDrop = $null; SndDone = $null; Rand = New-Object Random
+    SndDrop = $null; SndDone = $null; Rand = New-Object Random; Flash = @{}
 }
 
 # ---------------------------------------------------------------- utilitaires
@@ -673,10 +685,11 @@ function Send-Ready {
     $S.Manifest = Join-Path $dir ('sillage-' + $S.Code.Substring(0, 4) + '.sillage')
     [IO.File]::WriteAllLines($S.Manifest, [string[]]$sc.Lines, (New-Object Text.UTF8Encoding $false))
     $link = $Site + 'dl.html#' + $S.Code + '/' + [uri]::EscapeDataString($S.Name) + '/' + $S.Size
-    $msg = "Bonjour,`r`n`r`nVoici « $($S.Name) » ($(Format-Size $S.Size)).`r`nClique sur ce lien pour le télécharger :`r`n$link"
+    $msg = "Bonjour,`r`n`r`nVoici « $($S.Name) » ($(Format-Size $S.Size)).`r`nClique sur ce lien pour le télécharger :`r`n$link`r`n`r`nCode d'accès (si demandé) : $($S.Code)"
     $ui.MsgBox.Text = $msg
+    $ui.CodeText.Text = $S.Code
     $ok = Copy-Text $msg
-    $ui.WaitSub.Text = if ($ok) { "✓  Le message est copié. Colle-le à ton client avec Ctrl + V (mail, SMS, WhatsApp…)." } else { 'Copie ce message et envoie-le à ton client.' }
+    $ui.WaitSub.Text = if ($ok) { "Le message est copié : colle-le à ton client avec Ctrl + V (mail, SMS, WhatsApp…)." } else { 'Copie ce message et envoie-le à ton client.' }
     $ui.WaitState.Text = 'En attente de ton client…'
     $ui.WaitInfo.Text = ('{0:N0} fichiers · {1:N0} dossiers · {2}. Le transfert démarre dès que ton client ouvre le fichier reçu.' -f $sc.Files, $sc.Dirs, (Format-Size $S.Size))
     if ($sc.Errors -gt 0) {
@@ -684,6 +697,7 @@ function Send-Ready {
         $ui.WaitWarn.Visibility = 'Visible'
     } else { $ui.WaitWarn.Visibility = 'Collapsed' }
     Show-View 'VWait'
+    if ($ok) { Flash-Copied $ui.BtnCopy '✓  Message copié' }
     $S.Retries = 0
     Start-SendCroc
 }
@@ -820,6 +834,7 @@ function Update-Fx {
 
 # ---------------------------------------------------------------- boucle de contrôle (4 fois par seconde)
 function Update-Logic {
+    if ($S.Flash.Count) { Reset-Flash }
     if ($S.Bg.ContainsKey('croc')) {
         $r = Receive-Bg 'croc'
         if ($r) {
@@ -911,6 +926,37 @@ function Install-App($bmp) {
     } catch {}
 }
 
+# ---------------------------------------------------------------- confirmation « copié » (vert + petite animation)
+function Flash-Copied($btn, [string]$label) {
+    if ($null -eq $btn.Tag) { $btn.Tag = [string]$btn.Content }
+    $btn.Content = $label
+    $btn.Background = New-Brush 255 34 197 94
+    $btn.Foreground = New-Brush 255 255 255 255
+    $btn.RenderTransformOrigin = New-Object Windows.Point(0.5, 0.5)
+    $st = New-Object Windows.Media.ScaleTransform(1.0, 1.0)
+    $btn.RenderTransform = $st
+    $ease = New-Object Windows.Media.Animation.BackEase; $ease.Amplitude = 0.6; $ease.EasingMode = 'EaseOut'
+    $a = New-Object Windows.Media.Animation.DoubleAnimation(0.92, 1.0, (New-Object Windows.Duration ([TimeSpan]::FromMilliseconds(380))))
+    $a.EasingFunction = $ease
+    $st.BeginAnimation([Windows.Media.ScaleTransform]::ScaleXProperty, $a)
+    $st.BeginAnimation([Windows.Media.ScaleTransform]::ScaleYProperty, $a)
+    $S.Flash[$btn.Name] = (Get-Date).AddSeconds(2.8)
+    Play-Sound $S.SndDrop
+}
+function Reset-Flash {
+    foreach ($k in @($S.Flash.Keys)) {
+        if ((Get-Date) -ge $S.Flash[$k]) {
+            $b = $ui[$k]
+            if ($b) {
+                $b.Content = $b.Tag
+                $b.ClearValue([Windows.Controls.Control]::BackgroundProperty)
+                $b.ClearValue([Windows.Controls.Control]::ForegroundProperty)
+            }
+            $S.Flash.Remove($k)
+        }
+    }
+}
+
 # ---------------------------------------------------------------- événements
 $ui.TitleBar.Add_MouseLeftButtonDown({ try { $win.DragMove() } catch {} })
 $ui.BtnMin.Add_Click({ $win.WindowState = 'Minimized' })
@@ -942,7 +988,8 @@ $ui.Drop.Add_MouseLeftButtonUp({
     if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { Start-Send @($dlg.SelectedPath) }
 })
 
-$ui.BtnCopy.Add_Click({ if (Copy-Text $ui.MsgBox.Text) { $ui.WaitSub.Text = '✓  Message copié à nouveau. Colle-le à ton client avec Ctrl + V.' } })
+$ui.BtnCopy.Add_Click({ if (Copy-Text $ui.MsgBox.Text) { Flash-Copied $ui.BtnCopy '✓  Message copié' } })
+$ui.BtnCopyCode.Add_Click({ if (Copy-Text $S.Code) { Flash-Copied $ui.BtnCopyCode '✓  Copié' } })
 $confirmStop = {
     $q = [Windows.MessageBox]::Show('Arrêter le transfert ?', 'Sillage', 'YesNo', 'Question')
     if ("$q" -ne 'Yes') { return }
