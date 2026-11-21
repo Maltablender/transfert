@@ -394,7 +394,7 @@ function Send-Ready {
         [IO.File]::WriteAllLines($S.AttrFile, [string[]]$sc.Attr, (New-Object Text.UTF8Encoding $false))
     }
     $S.Code = New-Code
-    $link = $Site + '#' + $S.Code
+    $link = $Site + 'recevoir.html#' + $S.Code
     $msg = "Je t'envoie « $($S.Name) » ($(Format-Size $S.Size)), chiffré de bout en bout.`r`nClique sur ce lien pour le recevoir : $link"
     $box.Text = $msg
     $ok = Copy-Text $msg
