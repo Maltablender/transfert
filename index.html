@@ -118,6 +118,15 @@ h1 em{font:italic 400 1.12em/1 "Instrument Serif",Georgia,serif;letter-spacing:-
 .gfin{display:none;align-items:center;gap:10px;margin-top:6px;padding:12px 14px;border-radius:14px;background:rgba(60,230,200,.08);border:1px solid rgba(60,230,200,.28);color:#D2F7EF;font-size:13px}
 .gfin.show{display:flex;animation:rise .4s ease-out}
 .gnote{margin:12px 0 0;font-size:11.8px;color:#6B7280;line-height:1.5}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.gs .act{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 14px;border-radius:11px;border:0;background:var(--grad);color:#fff;font:600 12.5px Geist,sans-serif;cursor:pointer;text-decoration:none;box-shadow:0 8px 22px -10px rgba(77,163,255,.9)}
+.gs .act svg{width:15px;height:15px}
+.gs .act.copied{background:#22C55E}
+.gs .go{margin-top:0}
+.tip{margin-top:8px;font-size:12px;color:#7D8597}
+.have{display:flex;align-items:center;gap:10px;margin-top:14px;padding:12px 14px;border-radius:14px;background:rgba(109,93,252,.08);border:1px solid rgba(109,93,252,.25);text-align:left;font-size:13px;color:var(--soft)}
+.have svg{flex:none;width:22px;height:22px}
+.have b{color:var(--ink)}
 footer{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 18px;font-size:12.5px;color:#5F6574}
 footer span{display:inline-flex;align-items:center;gap:6px}
 footer svg{width:13px;height:13px}
@@ -150,6 +159,7 @@ footer svg{width:13px;height:13px}
         <div style="min-width:0"><b id="name">Ton dossier</b><span id="meta">Tout le contenu, à l'identique</span></div>
         <span class="ok">100 % intact</span>
       </div>
+      <div class="have"><svg viewBox="0 0 32 32"><defs><linearGradient id="lg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6D5DFC"/><stop offset=".5" stop-color="#4DA3FF"/><stop offset="1" stop-color="#3CE6C8"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#lg2)"/><path d="M6.5 17.5C9.5 10.5 12.5 10.5 16 16S22.5 21.5 25.5 14.5" stroke="#fff" stroke-width="2.8" fill="none" stroke-linecap="round"/></svg><span><b>Tu as déjà Onde ?</b> Ouvre-le depuis ton Bureau et entre le code du message, pas besoin de retélécharger.</span></div>
 
       <div class="codebox" id="codebox">
         <label for="code">Code d'accès (il est dans le message reçu)</label>
@@ -158,21 +168,21 @@ footer svg{width:13px;height:13px}
 
       <a class="btn" id="dl" href="Recevoir.bat" download="Recevoir avec Onde.bat">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span id="dltxt">Télécharger</span>
+        <span id="dltxt">Installer Onde et recevoir</span>
       </a>
       <div class="bad" id="bad">Colle d'abord le code d'accès qui se trouve dans le message reçu.</div>
       <div class="after" id="after"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#3CE6C8" stroke-width="1.8"/><path d="m8 12.2 2.7 2.7L16 9.6" stroke="#3CE6C8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><div>Ouvre le fichier <b>« Recevoir avec Onde »</b> qui vient d'arriver, en haut ou en bas de ton navigateur. Tu choisis où enregistrer, puis le dossier arrive avec sa progression.</div></div>
 
       <div class="steps">
-        <div class="step" id="s1"><b><i>1</i>Télécharge</b>un petit fichier</div>
+        <div class="step" id="s1"><b><i>1</i>Télécharge</b>Onde, une seule fois</div>
         <div class="step" id="s2"><b><i>2</i>Ouvre-le</b>d'un double-clic</div>
-        <div class="step" id="s3"><b><i>3</i>C'est tout</b>le dossier arrive</div>
+        <div class="step" id="s3"><b><i>3</i>C'est tout</b>Onde reste sur ton Bureau</div>
       </div>
 
       <section class="guide" id="guide">
         <button class="gh" id="gh" type="button" aria-expanded="false" aria-controls="gbody">
           <span class="sh"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6z" stroke="#4DA3FF" stroke-width="1.8" stroke-linejoin="round"/><path d="m9 12 2.2 2.2L15.5 10" stroke="#3CE6C8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <span><b>Windows affiche un avertissement ?</b><small>Guide en 3 étapes · 20 secondes</small></span>
+          <span><b>Bloqué par Windows ou le navigateur ?</b><small>Déblocage guidé en 1 minute, bouton par bouton</small></span>
           <svg class="chev" viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <div class="gb" id="gbody"><div><div class="gin">
@@ -183,42 +193,65 @@ footer svg{width:13px;height:13px}
           </div>
           <div class="gprog"><i id="gbar"></i></div>
 
-          <div class="gs cur" data-i="0">
+          <div class="gs cur">
             <span class="n">1</span>
             <div>
-              <h4>Garde le fichier téléchargé</h4>
+              <h4>Le navigateur bloque le fichier</h4>
               <p id="g1txt"></p>
               <div class="mock"><div class="dlbar"><span class="f">Recevoir avec Onde.bat</span><span class="k hl" id="g1btn">Conserver</span></div></div>
-              <button class="go" type="button">C'est fait</button>
+              <div class="acts">
+                <button class="act" type="button" id="copydl"><svg viewBox="0 0 24 24" fill="none"><rect x="8" y="8" width="12" height="12" rx="3" stroke="#fff" stroke-width="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="#fff" stroke-width="2"/></svg><span>Copier l'adresse des téléchargements</span></button>
+                <button class="go" type="button">C'est fait</button>
+              </div>
+              <div class="tip" id="g1tip"></div>
             </div>
           </div>
 
-          <div class="gs" data-i="1">
+          <div class="gs">
             <span class="n">2</span>
             <div>
-              <h4>Passe l'écran bleu de Windows</h4>
-              <p>Double-clique sur le fichier. Si un écran bleu s'affiche, clique sur <b>Informations complémentaires</b>, puis sur <b>Exécuter quand même</b>.</p>
-              <div class="mock"><div class="ss" id="ssmock">
+              <h4>L'écran bleu « Windows a protégé votre ordinateur »</h4>
+              <p>Clique sur <b>Informations complémentaires</b>, puis sur <b>Exécuter quand même</b>. Si ce bouton n'apparaît pas, ouvre les réglages ci-dessous : <b>Protection fondée sur la réputation</b> › <b>Paramètres</b> › désactive <b>Vérifier les applications et les fichiers</b>.</p>
+              <div class="mock"><div class="ss">
                 <div class="t">Windows a protégé votre ordinateur</div>
                 <div class="d">Microsoft Defender SmartScreen a empêché le démarrage d'une application non reconnue.</div>
                 <span class="lk hl" id="sslink">Informations complémentaires</span>
                 <div class="row"><span id="ssrun" style="display:none" class="hl">Exécuter quand même</span><span>Ne pas exécuter</span></div>
               </div></div>
-              <button class="go" type="button">C'est fait</button>
+              <div class="acts">
+                <a class="act" href="windowsdefender://appbrowser"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6z" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>Ouvrir les réglages de Windows</a>
+                <button class="go" type="button">C'est fait</button>
+              </div>
+              <div class="tip">Le navigateur demande « Ouvrir Sécurité Windows ? » : clique sur Ouvrir. Une fois le dossier reçu, tu peux réactiver ce réglage.</div>
             </div>
           </div>
 
-          <div class="gs" data-i="2">
+          <div class="gs">
             <span class="n">3</span>
             <div>
-              <h4>Onde s'ouvre : choisis où enregistrer</h4>
-              <p>Clique sur <b>Recevoir ici</b> (ou <b>Changer…</b> pour un autre dossier). Si Windows demande l'accès au réseau, clique sur <b>Autoriser</b>. La progression s'affiche et le dossier s'ouvre tout seul à la fin.</p>
-              <button class="go" type="button">C'est fait</button>
+              <h4>L'antivirus a supprimé le fichier</h4>
+              <p>Ouvre l'historique de protection, clique sur l'élément <b>Recevoir avec Onde</b> › <b>Actions</b> › <b>Autoriser</b>, puis télécharge à nouveau avec le bouton du haut.</p>
+              <div class="acts">
+                <a class="act" href="windowsdefender://history"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#fff" stroke-width="2"/><path d="M12 8v4l3 2" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>Ouvrir l'historique de protection</a>
+                <button class="go" type="button">C'est fait</button>
+              </div>
             </div>
           </div>
 
-          <div class="gfin" id="gfin"><svg viewBox="0 0 24 24" fill="none" width="20" height="20"><circle cx="12" cy="12" r="9" stroke="#3CE6C8" stroke-width="1.8"/><path d="m8 12.2 2.7 2.7L16 9.6" stroke="#3CE6C8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>C'est parti : laisse la fenêtre Onde ouverte jusqu'à la fin.</div>
-          <p class="gnote">Rien n'est désactivé sur ton PC : cet avertissement s'affiche pour tout petit programme récent. Il ne concerne que ce fichier, et le transfert reste chiffré de bout en bout.</p>
+          <div class="gs">
+            <span class="n">4</span>
+            <div>
+              <h4>Onde s'ouvre : choisis où enregistrer</h4>
+              <p>Clique sur <b>Recevoir ici</b> (ou <b>Changer…</b>). Si Windows demande l'accès au réseau, clique sur <b>Autoriser</b>. L'icône <b>Onde</b> reste sur ton Bureau pour tes prochains dossiers.</p>
+              <div class="acts">
+                <a class="act" href="windowsdefender://network"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 0 1 16 0M7.5 12a4.5 4.5 0 0 1 9 0" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="15" r="1.6" fill="#fff"/></svg>Réglages réseau (pare-feu)</a>
+                <button class="go" type="button">C'est fait</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="gfin" id="gfin"><svg viewBox="0 0 24 24" fill="none" width="20" height="20"><circle cx="12" cy="12" r="9" stroke="#3CE6C8" stroke-width="1.8"/><path d="m8 12.2 2.7 2.7L16 9.6" stroke="#3CE6C8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>Tout est débloqué : laisse la fenêtre Onde ouverte jusqu'à la fin.</div>
+          <p class="gnote">Ces blocages sont normaux pour un petit programme récent : ils protègent ton PC des fichiers inconnus. Le transfert, lui, reste privé et chiffré de bout en bout.</p>
         </div></div></div>
       </section>
     </div></section>
@@ -275,15 +308,25 @@ footer svg{width:13px;height:13px}
   const guide = $('guide'), gh = $('gh');
   const steps = [...document.querySelectorAll('.gs')];
   const TXT = {
-    chrome: 'En haut à droite de Chrome, l\'icône de téléchargement s\'affiche. Si Chrome signale le fichier, clique sur <b>Conserver</b>, puis sur <b>Conserver quand même</b> si on te le redemande.',
-    edge: 'Dans le panneau des téléchargements d\'Edge, passe la souris sur le fichier, clique sur <b>…</b> puis <b>Conserver</b>. Ensuite <b>Afficher plus</b> et <b>Conserver quand même</b>.',
-    firefox: 'Clique sur la flèche de téléchargement en haut à droite. Si Firefox bloque le fichier, fais un clic droit dessus puis <b>Autoriser le téléchargement</b>.'
+    chrome: 'Ouvre les téléchargements de Chrome (bouton ci-dessous, colle l\'adresse dans la barre du haut puis Entrée). Sur <b>Recevoir avec Onde</b>, clique sur <b>Conserver</b>, puis <b>Conserver quand même</b>.',
+    edge: 'Ouvre les téléchargements d\'Edge (bouton ci-dessous, colle l\'adresse puis Entrée). Sur le fichier, clique sur <b>…</b> › <b>Conserver</b> › <b>Afficher plus</b> › <b>Conserver quand même</b>.',
+    firefox: 'Ouvre les téléchargements de Firefox (bouton ci-dessous, colle l\'adresse puis Entrée). Fais un clic droit sur le fichier puis <b>Autoriser le téléchargement</b>.'
   };
+  const DLURL = {chrome: 'chrome://downloads', edge: 'edge://downloads', firefox: 'about:downloads'};
   const BTN = {chrome: 'Conserver', edge: 'Conserver', firefox: 'Autoriser le téléchargement'};
+  let browser = 'chrome';
   const setBrowser = b => {
     document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.b === b));
-    $('g1txt').innerHTML = TXT[b]; $('g1btn').textContent = BTN[b];
+    browser = b; $('g1txt').innerHTML = TXT[b]; $('g1btn').textContent = BTN[b];
+    $('g1tip').textContent = 'Adresse : ' + DLURL[b];
   };
+  $('copydl').addEventListener('click', async () => {
+    const b = $('copydl'), t = b.querySelector('span');
+    try { await navigator.clipboard.writeText(DLURL[browser]); t.textContent = 'Copié : colle-le dans la barre d\'adresse'; }
+    catch (e) { t.textContent = 'Tape ' + DLURL[browser] + ' dans la barre d\'adresse'; }
+    b.classList.add('copied');
+    setTimeout(() => { b.classList.remove('copied'); t.textContent = 'Copier l\'adresse des téléchargements'; }, 3500);
+  });
   const ua = navigator.userAgent;
   setBrowser(/Edg\//.test(ua) ? 'edge' : /Firefox\//.test(ua) ? 'firefox' : 'chrome');
   document.querySelectorAll('.tabs button').forEach(x => x.addEventListener('click', () => setBrowser(x.dataset.b)));
@@ -299,7 +342,7 @@ footer svg{width:13px;height:13px}
     steps.forEach((s, i) => { s.classList.toggle('done', i < done); s.classList.toggle('cur', i === done); s.querySelector('.go').textContent = i < done ? '\u2713 Fait' : 'C\'est fait'; });
     $('gbar').style.width = (done / steps.length * 100) + '%';
     $('gfin').classList.toggle('show', done >= steps.length);
-    if (done >= 3) { $('s3').classList.add('on'); }
+    if (done >= steps.length) { $('s3').classList.add('on'); }
   };
   steps.forEach((s, i) => s.querySelector('.go').addEventListener('click', () => { done = Math.max(done, i + 1); render(); }));
   /* petite démo de l'écran bleu : le lien puis le bouton */
