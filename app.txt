@@ -153,8 +153,7 @@ $Xaml = @'
               <Rectangle Width="32" Height="32" RadiusX="9" RadiusY="9">
                 <Rectangle.Fill><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#6D5DFC" Offset="0"/><GradientStop Color="#4DA3FF" Offset="0.5"/><GradientStop Color="#3CE6C8" Offset="1"/></LinearGradientBrush></Rectangle.Fill>
               </Rectangle>
-              <Ellipse Canvas.Left="7.6" Canvas.Top="19.6" Width="4.8" Height="4.8" Fill="White"/>
-              <Path Data="M10,15.5 A6.5,6.5 0 0 1 16.5,22 M10,10 A12,12 0 0 1 22,22" Stroke="White" StrokeThickness="2.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+              <Path Data="M6.5,17.5 C9.5,10.5 12.5,10.5 16,16 C19.5,21.5 22.5,21.5 25.5,14.5" Stroke="White" StrokeThickness="2.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
             </Canvas>
           </Viewbox>
           <TextBlock Text="Onde" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,1"/>
@@ -361,8 +360,7 @@ $LogoXaml = @'
         </LinearGradientBrush>
       </Rectangle.Fill>
     </Rectangle>
-    <Ellipse Canvas.Left="7.6" Canvas.Top="19.6" Width="4.8" Height="4.8" Fill="White"/>
-    <Path Data="M10,15.5 A6.5,6.5 0 0 1 16.5,22 M10,10 A12,12 0 0 1 22,22" Stroke="White" StrokeThickness="2.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+    <Path Data="M6.5,17.5 C9.5,10.5 12.5,10.5 16,16 C19.5,21.5 22.5,21.5 25.5,14.5" Stroke="White" StrokeThickness="2.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
   </Canvas>
 </Viewbox>
 '@
