@@ -28,23 +28,23 @@ $Xaml = @'
         Background="Transparent" ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen"
         FontFamily="Segoe UI Variable Display, Segoe UI" Foreground="#F2F2F2" UseLayoutRounding="True">
   <Window.Resources>
-    <SolidColorBrush x:Key="Accent" Color="#E10600"/>
-    <SolidColorBrush x:Key="AccentD" Color="#E10600"/>
+    <SolidColorBrush x:Key="Accent" Color="#E11D2E"/>
+    <SolidColorBrush x:Key="AccentD" Color="#E11D2E"/>
     <Style x:Key="Primary" TargetType="Button">
       <Setter Property="Background" Value="{StaticResource Accent}"/>
       <Setter Property="Foreground" Value="White"/>
       <Setter Property="FontSize" Value="16"/>
-      <Setter Property="FontFamily" Value="Bahnschrift SemiBold, Segoe UI"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="Height" Value="54"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="bd" CornerRadius="2" Background="{TemplateBinding Background}">
+            <Border x:Name="bd" CornerRadius="12" Background="{TemplateBinding Background}">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#FF2414"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#F2364A"/></Trigger>
               <Trigger Property="IsPressed" Value="True"><Setter TargetName="bd" Property="Opacity" Value="0.72"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -61,7 +61,7 @@ $Xaml = @'
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="bd" CornerRadius="2" Background="{TemplateBinding Background}" BorderBrush="#2E2E2E" BorderThickness="1">
+            <Border x:Name="bd" CornerRadius="12" Background="{TemplateBinding Background}" BorderBrush="#2E2E2E" BorderThickness="1">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
@@ -80,7 +80,7 @@ $Xaml = @'
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="bd" CornerRadius="2" Background="Transparent">
+            <Border x:Name="bd" CornerRadius="12" Background="Transparent">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
@@ -98,7 +98,7 @@ $Xaml = @'
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="bd" Background="Transparent" Padding="10,8" CornerRadius="2">
+            <Border x:Name="bd" Background="Transparent" Padding="10,8" CornerRadius="12">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
@@ -110,7 +110,7 @@ $Xaml = @'
     </Style>
     <Style x:Key="H1" TargetType="TextBlock">
       <Setter Property="FontSize" Value="31"/>
-      <Setter Property="FontFamily" Value="Bahnschrift SemiBold, Segoe UI"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="Foreground" Value="#F2F2F2"/>
       <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
@@ -127,18 +127,18 @@ $Xaml = @'
     </Style>
     <Style x:Key="StatValue" TargetType="TextBlock">
       <Setter Property="FontSize" Value="17"/>
-      <Setter Property="FontFamily" Value="Bahnschrift SemiBold, Segoe UI"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="Foreground" Value="#F2F2F2"/>
       <Setter Property="Margin" Value="0,3,0,0"/>
     </Style>
   </Window.Resources>
 
-  <Border x:Name="Root" Margin="18" CornerRadius="4" BorderBrush="#262626" BorderThickness="1" AllowDrop="True">
+  <Border x:Name="Root" Margin="18" CornerRadius="16" BorderBrush="#232326" BorderThickness="1" AllowDrop="True">
     <Border.Background>
       <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#0C0C0C" Offset="0"/>
-        <GradientStop Color="#0A0A0A" Offset="1"/>
+        <GradientStop Color="#141416" Offset="0"/>
+        <GradientStop Color="#0A0A0B" Offset="1"/>
       </LinearGradientBrush>
     </Border.Background>
     <Border.Effect>
@@ -152,21 +152,21 @@ $Xaml = @'
       </Grid.RowDefinitions>
 
       <!-- glow décoratif -->
-      <Border Grid.Row="0" Height="3" Width="56" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="22,0,0,0" Background="#E10600" IsHitTestVisible="False"/>
+      <Grid Grid.RowSpan="3" IsHitTestVisible="False"/>
 
       <!-- barre de titre -->
       <Grid x:Name="TitleBar" Background="Transparent" Margin="22,0,14,0">
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
           <Viewbox Width="26" Height="26">
             <Canvas Width="32" Height="32">
-              <Ellipse Width="32" Height="32" Fill="#E10600"/>
+              <Ellipse Width="32" Height="32" Fill="#E11D2E"/>
               <Path Data="M5,17 C8.2,10 11.4,10 14.6,17 C17.8,24 21,24 24.2,17" Stroke="White" StrokeThickness="3.2" StrokeStartLineCap="Square" StrokeEndLineCap="Square"/>
             </Canvas>
           </Viewbox>
-          <TextBlock Text="ONDE" FontSize="20" FontFamily="Bahnschrift SemiBold, Segoe UI" FontStyle="Italic" VerticalAlignment="Center" Margin="10,0,0,1"/>
-          <Border Background="#161616" CornerRadius="2" Padding="8,3" Margin="12,0,0,0" VerticalAlignment="Center">
+          <TextBlock Text="Onde" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,1"/>
+          <Border Background="#161616" CornerRadius="12" Padding="8,3" Margin="12,0,0,0" VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal">
-              <Rectangle x:Name="LiveDot" Width="6" Height="6" Fill="#E10600" VerticalAlignment="Center"/>
+              <Ellipse x:Name="LiveDot" Width="6" Height="6" Fill="#E11D2E" VerticalAlignment="Center"/>
               <TextBlock Text="Chiffré de bout en bout" FontSize="11.5" Foreground="#A0A0A0" Margin="6,0,0,0"/>
             </StackPanel>
           </Border>
@@ -189,12 +189,12 @@ $Xaml = @'
           <TextBlock Style="{StaticResource H1}" Text="Envoyer un dossier"/>
           <TextBlock Style="{StaticResource Sub}" Text="Glisse-le ci-dessous. Le message pour ton client est copié automatiquement."/>
           <Grid x:Name="Drop" Height="280" Margin="0,22,0,0" Cursor="Hand" Background="Transparent" AllowDrop="True">
-            <Rectangle x:Name="DropRect" RadiusX="2" RadiusY="2" Stroke="#333333" StrokeThickness="1.6" StrokeDashArray="5 4" Fill="#111111"/>
+            <Rectangle x:Name="DropRect" RadiusX="16" RadiusY="16" Stroke="#333333" StrokeThickness="1.6" StrokeDashArray="5 4" Fill="#111111"/>
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
               <Grid Width="76" Height="76" HorizontalAlignment="Center">
                 <Grid.RenderTransform><TranslateTransform x:Name="DropFloat" Y="0"/></Grid.RenderTransform>
-                <Rectangle Stroke="#2A2A2A" StrokeThickness="1"/>
-                <Rectangle Margin="12" Fill="#E10600"/>
+                <Ellipse Fill="#1C0B0E"/>
+                <Ellipse Margin="11" Fill="#E11D2E"/>
                 <Path Data="M0,8 L8,0 L16,8 M8,0 L8,18" Stroke="White" StrokeThickness="2.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
               </Grid>
               <TextBlock Text="Glisse ton dossier ici" FontSize="19" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,20,0,0"/>
@@ -221,10 +221,10 @@ $Xaml = @'
         <StackPanel x:Name="VWait" Visibility="Collapsed">
           <TextBlock Style="{StaticResource H1}" Text="Prêt à envoyer"/>
           <TextBlock x:Name="WaitSub" Style="{StaticResource Sub}"/>
-          <Border CornerRadius="2" Background="#141414" BorderBrush="#262626" BorderThickness="1" Margin="0,18,0,0" Padding="16,12">
-            <TextBox x:Name="MsgBox" Background="Transparent" BorderThickness="0" Foreground="#EDEDED" FontSize="13.5" TextWrapping="Wrap" IsReadOnly="True" Height="132" VerticalScrollBarVisibility="Auto" CaretBrush="#E10600" SelectionBrush="#E10600"/>
+          <Border CornerRadius="12" Background="#141414" BorderBrush="#262626" BorderThickness="1" Margin="0,18,0,0" Padding="16,12">
+            <TextBox x:Name="MsgBox" Background="Transparent" BorderThickness="0" Foreground="#EDEDED" FontSize="13.5" TextWrapping="Wrap" IsReadOnly="True" Height="132" VerticalScrollBarVisibility="Auto" CaretBrush="#E11D2E" SelectionBrush="#E11D2E"/>
           </Border>
-          <Border CornerRadius="2" Background="#111111" BorderBrush="#262626" BorderThickness="1" Margin="0,10,0,0" Padding="16,9">
+          <Border CornerRadius="12" Background="#111111" BorderBrush="#262626" BorderThickness="1" Margin="0,10,0,0" Padding="16,9">
             <Grid>
               <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
               <StackPanel VerticalAlignment="Center">
@@ -239,10 +239,10 @@ $Xaml = @'
             <Button x:Name="BtnCopy" Style="{StaticResource Primary}" Content="Copier le message"/>
             <Button x:Name="BtnCancelWait" Grid.Column="2" Style="{StaticResource Ghost}" Content="Annuler"/>
           </Grid>
-          <Border CornerRadius="2" Background="#111111" Margin="0,14,0,0" Padding="16,12">
+          <Border CornerRadius="12" Background="#111111" Margin="0,14,0,0" Padding="16,12">
             <StackPanel>
               <StackPanel Orientation="Horizontal">
-                <Ellipse x:Name="WaitDot" Width="9" Height="9" Fill="#E10600" VerticalAlignment="Center"/>
+                <Ellipse x:Name="WaitDot" Width="9" Height="9" Fill="#E11D2E" VerticalAlignment="Center"/>
                 <TextBlock x:Name="WaitState" Text="En attente de ton client…" FontSize="14" FontWeight="SemiBold" Margin="10,0,0,0"/>
               </StackPanel>
               <TextBlock x:Name="WaitInfo" FontSize="12.5" Foreground="#808080" Margin="19,6,0,0" TextWrapping="Wrap"/>
@@ -255,10 +255,10 @@ $Xaml = @'
         <StackPanel x:Name="VRun" Visibility="Collapsed">
           <TextBlock x:Name="RunTitle" Style="{StaticResource H1}" Text="Envoi en cours"/>
           <TextBlock x:Name="RunSub" Style="{StaticResource Sub}"/>
-          <TextBlock x:Name="Pct" Text="0 %" FontSize="88" FontFamily="Bahnschrift SemiBold, Segoe UI" Margin="0,16,0,0" Foreground="#F2F2F2"/>
+          <TextBlock x:Name="Pct" Text="0 %" FontSize="88" FontWeight="SemiBold" Margin="0,16,0,0" Foreground="#F2F2F2"/>
           <Grid Height="40" Margin="0,4,0,0">
-            <Border x:Name="BarTrack" Height="4" CornerRadius="0" Background="#1F1F1F" VerticalAlignment="Center"/>
-            <Border x:Name="BarFill" Height="4" CornerRadius="0" Background="{StaticResource Accent}" HorizontalAlignment="Left" VerticalAlignment="Center" Width="0">
+            <Border x:Name="BarTrack" Height="6" CornerRadius="3" Background="#1F1F1F" VerticalAlignment="Center"/>
+            <Border x:Name="BarFill" Height="6" CornerRadius="3" Background="{StaticResource Accent}" HorizontalAlignment="Left" VerticalAlignment="Center" Width="0">
             </Border>
             <Canvas x:Name="Fx" IsHitTestVisible="False" ClipToBounds="False"/>
           </Grid>
@@ -268,7 +268,7 @@ $Xaml = @'
             <StackPanel Grid.Column="1"><TextBlock Style="{StaticResource StatLabel}" Text="Vitesse"/><TextBlock x:Name="StSpeed" Style="{StaticResource StatValue}" Text="–"/></StackPanel>
             <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource StatLabel}" Text="Temps restant"/><TextBlock x:Name="StEta" Style="{StaticResource StatValue}" Text="–"/></StackPanel>
           </Grid>
-          <Border CornerRadius="2" Background="#111111" Margin="0,22,0,0" Padding="14,11">
+          <Border CornerRadius="12" Background="#111111" Margin="0,22,0,0" Padding="14,11">
             <TextBlock x:Name="CurFile" FontSize="12.5" Foreground="#808080" TextTrimming="CharacterEllipsis" Text=" "/>
           </Border>
           <Button x:Name="BtnCancelRun" Style="{StaticResource Ghost}" Content="Annuler" Margin="0,22,0,0"/>
@@ -278,13 +278,13 @@ $Xaml = @'
         <StackPanel x:Name="VDone" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,0,0,40">
           <Grid Width="96" Height="96" HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5">
             <Grid.RenderTransform><ScaleTransform x:Name="CheckScale" ScaleX="1" ScaleY="1"/></Grid.RenderTransform>
-            <Rectangle Stroke="#2A2A2A" StrokeThickness="1"/>
-            <Rectangle Margin="12" Fill="#E10600"/>
+            <Ellipse Fill="#1C0B0E"/>
+            <Ellipse Margin="12" Fill="#E11D2E"/>
             <Path Data="M0,9 L7,16 L20,1" Stroke="White" StrokeThickness="3.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Grid>
           <TextBlock x:Name="DoneTitle" Style="{StaticResource H1}" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,26,0,0" Text="Transfert terminé"/>
           <TextBlock x:Name="DoneSub" Style="{StaticResource Sub}" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="440"/>
-          <Border x:Name="DoneVerifyBox" CornerRadius="2" Background="#111111" Margin="0,20,0,0" Padding="14,11" HorizontalAlignment="Center">
+          <Border x:Name="DoneVerifyBox" CornerRadius="12" Background="#111111" Margin="0,20,0,0" Padding="14,11" HorizontalAlignment="Center">
             <TextBlock x:Name="DoneVerify" FontSize="13" Foreground="#34D399" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="420"/>
           </Border>
           <Grid Margin="0,26,0,0">
@@ -297,7 +297,7 @@ $Xaml = @'
         <!-- ERREUR -->
         <StackPanel x:Name="VError" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,0,0,40">
           <Grid Width="80" Height="80" HorizontalAlignment="Center">
-            <Rectangle Fill="#1E1A10"/>
+            <Ellipse Fill="#1E1A10"/>
             <Path Data="M0,0 L0,14 M0,21 L0,22" Stroke="#FBBF24" StrokeThickness="3.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Grid>
           <TextBlock x:Name="ErrTitle" Style="{StaticResource H1}" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,24,0,0" Text="Un problème est survenu"/>
@@ -313,12 +313,12 @@ $Xaml = @'
         <StackPanel x:Name="VCode" Visibility="Collapsed">
           <TextBlock Style="{StaticResource H1}" Text="Recevoir un dossier"/>
           <TextBlock Style="{StaticResource Sub}" Text="Entre le code reçu dans le message. Tu peux aussi coller le message en entier : Onde retrouve le code tout seul."/>
-          <Border CornerRadius="2" Background="#141414" BorderBrush="#2E2E2E" BorderThickness="1" Margin="0,24,0,0" Padding="14,4">
-            <TextBox x:Name="CodeBox" Background="Transparent" BorderThickness="0" Foreground="#F2F2F2" FontSize="15" Height="44" VerticalContentAlignment="Center" CaretBrush="#E10600"/>
+          <Border CornerRadius="12" Background="#141414" BorderBrush="#2E2E2E" BorderThickness="1" Margin="0,24,0,0" Padding="14,4">
+            <TextBox x:Name="CodeBox" Background="Transparent" BorderThickness="0" Foreground="#F2F2F2" FontSize="15" Height="44" VerticalContentAlignment="Center" CaretBrush="#E11D2E"/>
           </Border>
           <Button x:Name="BtnCode" Style="{StaticResource Primary}" Content="Recevoir" Margin="0,16,0,0"/>
           <TextBlock x:Name="CodeErr" FontSize="13" Foreground="#FBBF24" Margin="2,12,0,0" TextWrapping="Wrap" Visibility="Collapsed" Text="Ce code ne semble pas complet. Il ressemble à : 1234-abcde-fghjk-mnpqr"/>
-          <Border CornerRadius="2" Background="#111111" Margin="0,22,0,0" Padding="16,13">
+          <Border CornerRadius="12" Background="#111111" Margin="0,22,0,0" Padding="16,13">
             <StackPanel>
               <TextBlock Text="Le code ne sert qu'une fois" FontSize="13" FontWeight="SemiBold"/>
               <TextBlock Text="Chaque code ouvre uniquement le dossier qui t'a été envoyé. Le transfert est chiffré de bout en bout, rien n'est stocké en ligne." FontSize="12.5" Foreground="#808080" TextWrapping="Wrap" Margin="0,4,0,0"/>
@@ -331,11 +331,11 @@ $Xaml = @'
         <StackPanel x:Name="VDest" Visibility="Collapsed">
           <TextBlock Style="{StaticResource H1}" Text="Où enregistrer le dossier ?"/>
           <TextBlock Style="{StaticResource Sub}" Text="Choisis l'emplacement, puis lance la réception. Tout le contenu y sera copié à l'identique."/>
-          <Border CornerRadius="2" Background="#141414" BorderBrush="#262626" BorderThickness="1" Margin="0,24,0,0" Padding="16,14">
+          <Border CornerRadius="12" Background="#141414" BorderBrush="#262626" BorderThickness="1" Margin="0,24,0,0" Padding="16,14">
             <Grid>
               <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
               <Grid Width="44" Height="44" VerticalAlignment="Center">
-                <Rectangle Fill="#1E1E1E"/>
+                <Ellipse Fill="#1E1E1E"/>
                 <Path Data="M0,3 A2,2 0 0 1 2,1 L6,1 L8,3 L16,3 A2,2 0 0 1 18,5 L18,12 A2,2 0 0 1 16,14 L2,14 A2,2 0 0 1 0,12 Z" Fill="{StaticResource Accent}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
               </Grid>
               <StackPanel Grid.Column="1" Margin="14,0,10,0" VerticalAlignment="Center">
@@ -366,7 +366,7 @@ $Xaml = @'
 $LogoXaml = @'
 <Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Width="256" Height="256">
   <Canvas Width="32" Height="32">
-    <Ellipse Width="32" Height="32" Fill="#E10600"/>
+    <Ellipse Width="32" Height="32" Fill="#E11D2E"/>
     <Path Data="M5,17 C8.2,10 11.4,10 14.6,17 C17.8,24 21,24 24.2,17" Stroke="White" StrokeThickness="3.2" StrokeStartLineCap="Square" StrokeEndLineCap="Square"/>
   </Canvas>
 </Viewbox>
@@ -696,7 +696,7 @@ function Start-Send([string[]]$paths) {
     if ($paths.Count -eq 0) { return }
     Play-Sound $S.SndDrop
     $S.Paths = $paths
-    $S.Name = if ($paths.Count -eq 1) { Split-Path $paths[0] -Leaf } else { "$($paths.Count) éléments" }
+    $S.Name = if ($paths.Count -eq 1) { Split-Path $paths[0] -Leaf } else { (Split-Path $paths[0] -Leaf) + " + $($paths.Count - 1) autre(s)" }
     Show-Prep 'Préparation…' "Inventaire complet de « $($S.Name) », fichiers cachés et protégés compris."
     $S.Scan = $null
     Start-Bg 'scan' $ScanPaths @(, [string[]]$paths)
@@ -792,8 +792,23 @@ function Confirm-Dest {
     $S.DestOk = $true
     Start-Recv
 }
+function Get-UsedPath([string]$code) {
+    try {
+        $f = Join-Path $AppDir 'recus.txt'
+        if ($code -and (Test-Path -LiteralPath $f)) { foreach ($l in [IO.File]::ReadAllLines($f)) { $p = $l -split "`t"; if ($p[0] -eq $code) { if ($p.Count -gt 1 -and $p[1]) { return $p[1] } else { return '-' } } } }
+    } catch {}
+    return $null
+}
 function Start-Recv {
     if (-not $S.Code) { Show-View 'VCode'; [void]$ui.CodeBox.Focus(); return }
+    $used = Get-UsedPath $S.Code
+    if ($used) {
+        Stop-Croc
+        $S.Opened = $used; $S.Dest = if ($used -ne '-') { Split-Path $used -Parent } else { Get-DefaultDest }
+        $nm = if ($used -ne '-') { Split-Path $used -Leaf } else { 'le dossier' }
+        Show-Done 'Déjà reçu' "Ce code a déjà servi : « $nm » est arrivé sur ce PC. Un code ne fonctionne qu'une seule fois ; pour un nouvel envoi, demande un nouveau lien." '' $true 'Ouvrir le dossier'
+        return
+    }
     if (-not $S.DestOk) { Show-DestChoice; return }
     $S.Total = 0.0; $S.Overall = 0.0; $S.TargetPct = 0; $S.ShownPct = 0
     if (-not $S.Croc) {
@@ -854,6 +869,7 @@ function Recv-Finished {
         }
     } catch {}
     $S.Opened = if ($root) { Join-Path $S.Dest $root } else { $S.Dest }
+    try { [IO.File]::AppendAllText((Join-Path $AppDir 'recus.txt'), $S.Code + "`t" + $S.Opened + "`r`n", (New-Object Text.UTF8Encoding $false)) } catch {}
     $size = if ($S.Total -gt 0) { ' (' + (Format-Size $S.Total) + ')' } else { '' }
     Show-Done 'Dossier reçu' "Tout est arrivé$size dans $($S.Dest)." $verify $ok 'Ouvrir le dossier'
     Open-Received
@@ -866,7 +882,7 @@ function Open-Received {
 }
 
 # ---------------------------------------------------------------- particules et animation (~30 images/s)
-$PBrushes = @((New-Brush 240 225 6 0), (New-Brush 230 255 70 50), (New-Brush 230 255 255 255), (New-Brush 200 150 150 150))
+$PBrushes = @((New-Brush 240 225 29 46), (New-Brush 230 255 92 104), (New-Brush 230 255 255 255), (New-Brush 200 255 180 186))
 function Update-Fx {
     $S.Tick++
     # barre lissée
@@ -935,11 +951,11 @@ function Update-Logic {
                 if ($Mode -eq 'send') { Send-Finished } else { Recv-Finished }
             } else {
                 $S.Retries++
-                $max = if ($Mode -eq 'send') { 300 } else { 150 }
+                $max = if ($Mode -eq 'send') { 300 } else { 45 }
                 if ($S.Retries -gt $max) {
                     $last = ($S.Lines | Select-Object -Last 2) -join "`n"
                     if ($Mode -eq 'send') { Show-Error "La connexion n'a pas pu être rétablie.`n$last" }
-                    else { Show-Error "Impossible de joindre l'expéditeur. Vérifie qu'Onde est toujours ouvert chez lui, puis clique sur Réessayer.`n$last" }
+                    else { Show-Error "Ce code n'est plus actif : soit le dossier a déjà été reçu (un code ne sert qu'une fois), soit l'expéditeur a fermé Onde. Demande-lui de relancer l'envoi, puis clique sur Réessayer." }
                     return
                 }
                 $S.RetryAt = (Get-Date).AddSeconds(4)
@@ -965,7 +981,7 @@ function Get-LogoBitmap {
 }
 function Install-App($bmp) {
     try {
-        $ico = Join-Path $AppDir 'onde-v3.ico'
+        $ico = Join-Path $AppDir 'onde-v4.ico'
         if ($bmp -and -not (Test-Path -LiteralPath $ico)) {
             $enc = New-Object Windows.Media.Imaging.PngBitmapEncoder
             $enc.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bmp))
@@ -989,6 +1005,18 @@ function Install-App($bmp) {
         if (Test-Path -LiteralPath $ico) { $lnk.IconLocation = "$ico,0" }
         $lnk.Description = 'Onde : envoyer et recevoir des dossiers chiffrés'
         $lnk.Save()
+        try {
+            $lk = Join-Path $AppDir 'OndeLien.cmd'
+            $lkc = "@echo off`r`nset `"TS_MODE=recv`"`r`nset `"TS_CODE=%~1`"`r`nstart `"`" powershell -NoProfile -ExecutionPolicy Bypass -Command `"[Net.ServicePointManager]::SecurityProtocol='Tls12'; iex (irm ${Site}app.txt)`"`r`n"
+            [IO.File]::WriteAllText($lk, $lkc, (New-Object Text.ASCIIEncoding))
+            $rk = 'HKCU:\Software\Classes\onde'
+            New-Item -Path ($rk + '\shell\open\command') -Force | Out-Null
+            New-Item -Path ($rk + '\DefaultIcon') -Force | Out-Null
+            Set-ItemProperty -LiteralPath $rk -Name '(default)' -Value 'URL:Onde'
+            Set-ItemProperty -LiteralPath $rk -Name 'URL Protocol' -Value ''
+            Set-ItemProperty -LiteralPath ($rk + '\DefaultIcon') -Name '(default)' -Value $ico
+            Set-ItemProperty -LiteralPath ($rk + '\shell\open\command') -Name '(default)' -Value ('"' + $lk + '" "%1"')
+        } catch {}
         foreach ($o in @('Transfert sécurisé.lnk', 'Sillage.lnk')) { $old = Join-Path $desk $o; if (Test-Path -LiteralPath $old) { Remove-Item -LiteralPath $old -Force } }
     } catch {}
 }
@@ -1046,7 +1074,7 @@ $onDrop = {
     $_.Handled = $true
 }
 foreach ($c in @($ui.Root, $ui.Drop)) { $c.Add_DragOver($onDragOver); $c.Add_DragEnter($onDragOver); $c.Add_DragLeave($onDragLeave); $c.Add_Drop($onDrop) }
-$ui.Drop.Add_MouseEnter({ if ($S.View -eq 'VIdle') { $ui.DropRect.Stroke = New-Brush 255 225 6 0 } })
+$ui.Drop.Add_MouseEnter({ if ($S.View -eq 'VIdle') { $ui.DropRect.Stroke = New-Brush 255 225 29 46 } })
 $ui.Drop.Add_MouseLeave({ & $onDragLeave })
 $ui.Drop.Add_MouseLeftButtonUp({
     $dlg = New-Object System.Windows.Forms.FolderBrowserDialog

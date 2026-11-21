@@ -4,243 +4,208 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#0A0A0A">
-<title>Onde · Dossier prêt</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,800&display=swap" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23E10600'/%3E%3Cpath d='M5 17c3.2-7 6.4-7 9.6 0s6.4 7 9.6 0' stroke='%23fff' stroke-width='3.2' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#070708">
+<title>Onde</title>
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23E11D2E'/%3E%3Cpath d='M6 17c3-6.5 6-6.5 9 0s6 6.5 9 0' stroke='%23fff' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
-:root{color-scheme:dark;--bg:#0A0A0A;--panel:#101010;--panel2:#151515;--line:#232323;--line2:#2E2E2E;--ink:#F2F2F2;--soft:#BDBDBD;--mute:#878787;--dim:#565656;--red:#E10600;--redh:#FF1E10;--cond:"Barlow Semi Condensed",Bahnschrift,"Arial Narrow",sans-serif;--body:Barlow,Bahnschrift,"Segoe UI",sans-serif}
+:root{color-scheme:dark;--bg:#070708;--ink:#F5F5F6;--soft:#C9C9CE;--mute:#8B8B93;--dim:#5C5C63;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.13);--card:#0E0E10;--red:#E11D2E;--redh:#F2364A;--f:Satoshi,"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif}
 *{box-sizing:border-box;min-width:0}
 html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--f);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 ::selection{background:var(--red);color:#fff}
 button{font:inherit;color:inherit}
-.mark{display:inline-block;width:26px;height:26px;flex:none}
+a{color:inherit}
 
-.app{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);min-height:100vh}
-.l{display:flex;flex-direction:column;padding:34px clamp(28px,5vw,80px) 30px;border-right:1px solid var(--line)}
-.top{display:flex;align-items:center;justify-content:space-between;gap:16px}
-.logo{display:flex;align-items:center;gap:10px;font:italic 800 24px/1 var(--cond);letter-spacing:.01em;color:var(--ink);text-decoration:none}
-.sec{display:flex;align-items:center;gap:8px;font:600 12px var(--cond);letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
-.sec svg{width:13px;height:13px}
+#ribbon{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.light{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(70% 55% at 50% -8%,rgba(255,255,255,.07),transparent 70%),radial-gradient(60% 50% at 50% 115%,rgba(225,29,46,.10),transparent 70%)}
 
-.hero{flex:1;display:flex;flex-direction:column;justify-content:center;padding:56px 0 40px;max-width:640px}
-.kicker{display:flex;align-items:center;gap:10px;margin:0 0 18px;font:600 13px var(--cond);letter-spacing:.16em;text-transform:uppercase;color:var(--soft)}
-.kicker i{width:8px;height:8px;background:var(--red);animation:pulse 1.4s steps(2,jump-none) infinite}
-@keyframes pulse{50%{opacity:.25}}
-h1{margin:0;font:800 clamp(46px,6.4vw,104px)/.9 var(--cond);letter-spacing:-.012em;text-transform:uppercase;overflow-wrap:break-word}
-.specs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:38px 0 0;border-top:1px solid var(--line2)}
-.specs div{padding:14px 16px 0 0}
-.specs div+div{padding-left:16px;border-left:1px solid var(--line)}
-.specs dt{font:600 11.5px var(--cond);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
-.specs dd{margin:4px 0 0;font:600 21px/1.2 var(--cond);color:var(--ink)}
+.page{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;padding:26px 32px 24px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;max-width:1180px;width:100%;margin:0 auto}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:20px;letter-spacing:-.03em;text-decoration:none}
+.logo svg{width:28px;height:28px}
+.sec{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:500;color:var(--mute)}
+.sec svg{width:15px;height:15px}
 
-.codebox{display:none;margin-top:30px}
-.codebox.show{display:block}
-.codebox label{display:block;font:600 11.5px var(--cond);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-bottom:8px}
-.codebox input{width:100%;height:58px;border-radius:2px;border:1px solid var(--line2);background:var(--panel);color:var(--ink);font:600 20px var(--cond);letter-spacing:.06em;padding:0 18px;transition:border-color .15s}
-.codebox input::placeholder{color:#3F3F3F}
-.codebox input:focus{outline:none;border-color:var(--ink)}
-.codebox input.good{border-color:#1DB954}
+.stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:48px 0 40px}
+.from{margin:0 0 18px;font-size:15px;font-weight:500;color:var(--mute);animation:rise .8s cubic-bezier(.2,.8,.2,1) both}
+h1{margin:0;max-width:16ch;font-weight:700;font-size:clamp(44px,7.2vw,96px);line-height:.98;letter-spacing:-.048em;text-wrap:balance;overflow-wrap:break-word;animation:rise .9s .06s cubic-bezier(.2,.8,.2,1) both}
+.meta{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:26px 0 0;padding:0;list-style:none;animation:rise .9s .12s cubic-bezier(.2,.8,.2,1) both}
+.meta li{display:flex;align-items:center;gap:7px;height:34px;padding:0 14px;border:1px solid var(--line);border-radius:99px;background:rgba(255,255,255,.025);font-size:14px;font-weight:500;color:var(--soft)}
+.meta li b{color:var(--ink);font-weight:700}
+.meta svg{width:14px;height:14px}
 
-.cta{margin-top:34px}
-.cbar{display:flex;align-items:stretch;border:1px solid var(--line2);border-top:0}
-.btn{display:flex;align-items:center;justify-content:space-between;gap:18px;white-space:nowrap;min-height:68px;padding:0 24px;background:var(--red);color:#fff;font:700 18px var(--cond);letter-spacing:.08em;text-transform:uppercase;text-decoration:none;cursor:pointer;transition:background .15s}
+.actions{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:40px;animation:rise .9s .18s cubic-bezier(.2,.8,.2,1) both}
+.btn{display:inline-flex;align-items:center;gap:18px;height:64px;padding:0 9px 0 30px;border-radius:99px;background:var(--red);color:#fff;font-size:17.5px;font-weight:700;letter-spacing:-.01em;text-decoration:none;cursor:pointer;box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 18px 40px -18px rgba(225,29,46,.9);transition:background .2s,transform .2s}
 .btn:hover{background:var(--redh)}
-.btn:focus-visible{outline:2px solid #fff;outline-offset:-5px}
-.btn svg{width:26px;height:26px;transition:transform .2s cubic-bezier(.2,.8,.2,1)}
-.btn:hover svg{transform:translateX(5px)}
-.code{flex:1;display:flex;align-items:center;gap:14px;height:52px;padding:0 18px;background:var(--panel);min-width:0}
-.code span{font:600 10.5px var(--cond);letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
-.code b{font:600 15px var(--cond);letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.copy{flex:none;width:92px;border:0;border-left:1px solid var(--line2);background:var(--panel);color:var(--soft);font:600 11.5px var(--cond);letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:background .15s,color .15s}
-.copy:hover{background:var(--panel2);color:var(--ink)}
-.copy.ok{background:#1DB954;color:#04140A}
-.cbar[hidden]{display:none}
+.btn:active{transform:scale(.985)}
+.btn:focus-visible,.alt:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.btn .ar{width:46px;height:46px;border-radius:50%;background:#fff;display:grid;place-items:center;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.btn:hover .ar{transform:translateX(3px)}
+.btn .ar svg{width:18px;height:18px}
+.alt{display:inline-flex;align-items:center;gap:10px;height:64px;padding:0 26px 0 20px;border-radius:99px;border:1px solid var(--line2);background:rgba(255,255,255,.03);font-size:16px;font-weight:500;text-decoration:none;color:var(--soft);transition:background .2s,color .2s,border-color .2s}
+.alt:hover{background:rgba(255,255,255,.06);color:var(--ink);border-color:rgba(255,255,255,.2)}
+.alt svg{width:22px;height:22px}
 
-.hint{margin:16px 0 0;font-size:14.5px;color:var(--mute);max-width:520px}
-.hint b{color:var(--ink);font-weight:600}
-.bad{display:none;margin-top:14px;color:#FFB020;font-size:14.5px}
-.after{display:none;gap:14px;margin-top:18px;padding:16px 18px;border-left:3px solid #1DB954;background:var(--panel);font-size:14.5px;color:var(--soft)}
-.after.show{display:flex;animation:in .35s cubic-bezier(.2,.8,.2,1)}
-.after b{color:var(--ink)}
-@keyframes in{from{opacity:0;transform:translateY(6px)}}
+.chip{display:inline-flex;align-items:center;gap:12px;margin-top:22px;padding:5px 5px 5px 16px;border-radius:99px;border:1px solid var(--line);background:rgba(10,10,12,.6);font-size:13.5px;color:var(--mute);animation:rise .9s .24s cubic-bezier(.2,.8,.2,1) both}
+.chip b{color:var(--soft);font-weight:500;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.chip button{height:30px;padding:0 14px;border:0;border-radius:99px;background:rgba(255,255,255,.07);font-size:13px;font-weight:500;color:var(--ink);cursor:pointer;transition:background .2s}
+.chip button:hover{background:rgba(255,255,255,.12)}
+.chip button.ok{background:#16A34A}
+.chip[hidden]{display:none}
 
-.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:30px 0 0;padding:0;list-style:none}
-.steps li{padding-top:12px;border-top:2px solid var(--line2);font-size:13.5px;color:var(--mute);transition:border-color .3s}
-.steps b{display:block;font:700 13px var(--cond);letter-spacing:.12em;text-transform:uppercase;color:var(--soft);margin-bottom:2px}
-.steps li.on{border-color:var(--red)}
-.steps li.on b{color:var(--ink)}
+.codebox{display:none;width:min(440px,100%);margin-top:34px;text-align:left}
+.codebox.show{display:block}
+.codebox label{display:block;margin:0 0 8px 18px;font-size:13.5px;font-weight:500;color:var(--mute)}
+.codebox input{width:100%;height:60px;border-radius:99px;border:1px solid var(--line2);background:rgba(10,10,12,.8);color:var(--ink);font:500 18px var(--f);letter-spacing:.02em;padding:0 24px;transition:border-color .2s,box-shadow .2s}
+.codebox input::placeholder{color:#45454B}
+.codebox input:focus{outline:none;border-color:rgba(255,255,255,.35);box-shadow:0 0 0 5px rgba(255,255,255,.05)}
+.codebox input.good{border-color:#16A34A}
+.bad{display:none;margin-top:16px;color:#FBBF24;font-size:14.5px}
+.notwin{display:none;margin-top:18px;max-width:430px;font-size:14.5px;color:var(--mute)}
+.notwin.show{display:block}
 
-.bot{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:22px;border-top:1px solid var(--line)}
-.help{display:inline-flex;align-items:center;gap:12px;padding:0;border:0;background:none;cursor:pointer;text-align:left;font-size:14px;color:var(--mute)}
-.help b{color:var(--ink);font-weight:600;border-bottom:1px solid var(--red);padding-bottom:1px}
-.help:hover b{color:#fff}
-.help svg{width:18px;height:18px;flex:none}
-.legal{font:600 11.5px var(--cond);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.next{display:none;width:min(640px,100%);margin-top:34px;padding:26px 28px;border-radius:24px;border:1px solid var(--line);background:rgba(14,14,16,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);text-align:left}
+.next.show{display:block;animation:rise .55s cubic-bezier(.2,.8,.2,1)}
+.next .k{font-size:13px;font-weight:700;color:var(--red);letter-spacing:.02em}
+.next h2{margin:6px 0 6px;font-size:24px;font-weight:700;letter-spacing:-.03em;line-height:1.2}
+.next p{margin:0;font-size:15px;color:var(--mute)}
+.next p b{color:var(--soft);font-weight:500}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:20px 0 0;padding:0;list-style:none}
+.steps li{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.03);font-size:14px;font-weight:500;color:var(--mute);transition:color .3s,background .3s}
+.steps i{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:1.5px solid var(--line2);font-style:normal;font-size:12px;font-weight:700;color:var(--mute);transition:all .3s}
+.steps li.on{color:var(--ink);background:rgba(255,255,255,.05)}
+.steps li.on i{background:var(--red);border-color:var(--red);color:#fff}
+.stuck{margin-top:16px;font-size:14px;color:var(--dim)}
+.stuck button{padding:0;border:0;background:none;color:var(--soft);font-weight:500;text-decoration:underline;text-decoration-color:rgba(255,255,255,.25);text-underline-offset:3px;cursor:pointer}
+.stuck button:hover{color:var(--ink)}
 
-/* ---- visuel produit ---- */
-.r{position:relative;overflow:hidden;background:#070707;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:60px 40px}
-#sig{position:absolute;inset:0;width:100%;height:100%}
-.r::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#070707 0,transparent 22%,transparent 78%,#070707 100%);pointer-events:none}
-.shot{position:relative;z-index:1;width:min(440px,100%);background:#0E0E0E;border:1px solid #262626;box-shadow:0 40px 100px -30px #000,0 0 0 8px rgba(255,255,255,.015)}
-.sb{display:flex;align-items:center;justify-content:space-between;height:42px;padding:0 16px;border-bottom:1px solid #1E1E1E}
-.sb .logo{font-size:15px;gap:7px}
-.sb .logo .mark{width:16px;height:16px}
-.sb .w{display:flex;gap:14px}
-.sb .w i{width:10px;height:1.5px;background:#5A5A5A}
-.sbody{padding:24px 24px 22px}
-.st{font:700 24px/1.1 var(--cond);text-transform:uppercase;letter-spacing:.01em}
-.ss2{margin-top:4px;font-size:13px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pct{margin-top:20px;font:800 84px/.85 var(--cond);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-.pct small{font-size:.42em;color:var(--red);margin-left:4px;vertical-align:top;position:relative;top:.18em}
-.trk{position:relative;height:4px;margin-top:18px;background:#202020}
-.trk i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--red)}
-.trk i::after{content:"";position:absolute;right:-1px;top:-5px;width:2px;height:14px;background:#fff}
-.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:18px;border-top:1px solid #1E1E1E}
-.stats div{padding-top:10px}
-.stats span{display:block;font:600 10.5px var(--cond);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
-.stats b{display:block;margin-top:2px;font:600 17px var(--cond);font-variant-numeric:tabular-nums}
-.cap{position:relative;z-index:1;margin-top:18px;font:600 11.5px var(--cond);letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.bot{display:flex;align-items:center;justify-content:space-between;gap:14px 24px;flex-wrap:wrap;max-width:1180px;width:100%;margin:0 auto;font-size:13.5px;color:var(--dim)}
+.help{display:inline-flex;align-items:center;gap:9px;padding:0;border:0;background:none;cursor:pointer;font-size:14px;font-weight:500;color:var(--mute);transition:color .2s}
+.help:hover{color:var(--ink)}
+.help svg{width:17px;height:17px}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}}
 
 /* ---- tiroir de déblocage ---- */
-.guide{position:fixed;top:0;right:0;bottom:0;z-index:20;width:min(480px,100%);background:#0E0E0E;border-left:1px solid var(--line2);transform:translateX(100%);transition:transform .45s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;visibility:hidden}
+.guide{position:fixed;top:12px;right:12px;bottom:12px;z-index:20;width:min(470px,calc(100% - 24px));border-radius:24px;border:1px solid var(--line2);background:#0D0D0F;box-shadow:0 30px 80px -20px #000;transform:translateX(calc(100% + 24px));transition:transform .5s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;visibility:hidden}
 .guide.open{transform:none;visibility:visible}
-.scrim{position:fixed;inset:0;z-index:19;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .3s}
+.scrim{position:fixed;inset:0;z-index:19;background:rgba(0,0,0,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .3s}
 .guide.open+.scrim{opacity:1;pointer-events:auto}
-.gtop{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:22px 24px;border-bottom:1px solid var(--line)}
-.gtop h2{margin:0;font:800 24px/1 var(--cond);text-transform:uppercase}
-.gtop p{margin:6px 0 0;font-size:13.5px;color:var(--mute)}
-.x{flex:none;width:42px;height:42px;border:1px solid var(--line2);background:none;cursor:pointer;display:grid;place-items:center}
-.x:hover{background:var(--panel2)}
-.x svg{width:16px;height:16px}
-.gin{flex:1;overflow-y:auto;padding:18px 24px 26px}
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line2);margin-bottom:16px}
-.tabs button{height:40px;border:0;background:none;color:var(--mute);font:700 12.5px var(--cond);letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
-.tabs button+button{border-left:1px solid var(--line2)}
-.tabs button.on{background:var(--ink);color:#0A0A0A}
-.gprog{height:2px;background:var(--line2);margin-bottom:6px}
-.gprog i{display:block;height:100%;width:0;background:var(--red);transition:width .5s cubic-bezier(.2,.8,.2,1)}
-.gs{display:grid;grid-template-columns:34px minmax(0,1fr);gap:14px;padding:18px 0;border-bottom:1px solid var(--line);opacity:.4;transition:opacity .3s}
+.gtop{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:24px 24px 18px}
+.gtop h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.03em}
+.gtop p{margin:4px 0 0;font-size:14px;color:var(--mute)}
+.x{flex:none;width:38px;height:38px;border-radius:50%;border:0;background:rgba(255,255,255,.06);cursor:pointer;display:grid;place-items:center;transition:background .2s}
+.x:hover{background:rgba(255,255,255,.12)}
+.x svg{width:14px;height:14px}
+.gin{flex:1;overflow-y:auto;padding:0 24px 24px}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:99px;background:rgba(255,255,255,.05);margin-bottom:14px}
+.tabs button{height:36px;border:0;border-radius:99px;background:none;color:var(--mute);font-size:14px;font-weight:500;cursor:pointer;transition:background .2s,color .2s}
+.tabs button.on{background:#fff;color:#0A0A0B}
+.gprog{height:3px;border-radius:3px;background:rgba(255,255,255,.08);margin-bottom:4px;overflow:hidden}
+.gprog i{display:block;height:100%;width:0;background:var(--red);border-radius:3px;transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.gs{display:grid;grid-template-columns:30px minmax(0,1fr);gap:14px;padding:18px 0;border-bottom:1px solid var(--line);opacity:.38;transition:opacity .3s}
+.gs:last-of-type{border-bottom:0}
 .gs.cur,.gs.done{opacity:1}
-.gs .n{width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--line2);font:700 15px var(--cond)}
+.gs .n{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;border:1.5px solid var(--line2);font-size:13px;font-weight:700}
 .gs.cur .n{background:var(--red);border-color:var(--red);color:#fff}
-.gs.done .n{background:#1DB954;border-color:#1DB954;color:#04140A}
-.gs h4{margin:6px 0 6px;font:700 17px/1.2 var(--cond);text-transform:uppercase;letter-spacing:.01em}
-.gs p{margin:0;font-size:13.8px;color:var(--mute);line-height:1.55}
-.gs p b{color:var(--ink);font-weight:600}
-.mock{margin-top:12px;overflow:hidden;font:12px "Segoe UI",var(--body)}
+.gs.done .n{background:#16A34A;border-color:#16A34A;color:#fff}
+.gs h4{margin:4px 0 6px;font-size:16px;font-weight:700;letter-spacing:-.02em;line-height:1.3}
+.gs p{margin:0;font-size:14px;color:var(--mute);line-height:1.55}
+.gs p b{color:var(--soft);font-weight:500}
+.mock{margin-top:12px;border-radius:12px;overflow:hidden;font:12px "Segoe UI",var(--f)}
 .ss{background:#0F5FA8;color:#fff;padding:12px 14px}
 .ss .t{font-size:15px;font-weight:600;margin-bottom:6px}
 .ss .d{font-size:11.5px;opacity:.85;line-height:1.45}
 .ss .lk{display:inline-block;margin-top:8px;text-decoration:underline;font-weight:600}
 .ss .row{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
 .ss .row span{padding:5px 12px;border:1px solid rgba(255,255,255,.7);font-size:11.5px}
-.hl{position:relative;animation:hl 1.6s ease-in-out infinite}
+.hl{position:relative;border-radius:4px;animation:hl 1.6s ease-in-out infinite}
 @keyframes hl{0%,100%{box-shadow:0 0 0 0 rgba(255,214,10,0)}50%{box-shadow:0 0 0 3px rgba(255,214,10,.9)}}
 .dlbar{display:flex;align-items:center;gap:10px;background:#202124;color:#E8EAED;padding:10px 12px}
 .dlbar .f{flex:1;min-width:0;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dlbar span.k{padding:4px 10px;border-radius:4px;background:#8AB4F8;color:#202124;font-weight:600;font-size:11.5px}
+.dlbar span.k{padding:4px 10px;border-radius:6px;background:#8AB4F8;color:#202124;font-weight:600;font-size:11.5px}
 .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.gs .act,.gs .go{display:inline-flex;align-items:center;gap:9px;height:40px;padding:0 16px;border:1px solid var(--red);background:var(--red);color:#fff;font:700 13px var(--cond);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;text-decoration:none;transition:background .15s}
+.gs .act,.gs .go{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px;border-radius:99px;border:0;background:var(--red);color:#fff;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;transition:background .2s}
 .gs .act:hover{background:var(--redh)}
 .gs .act svg{width:15px;height:15px}
-.gs .act.copied{background:#1DB954;border-color:#1DB954;color:#04140A}
-.gs .go{background:none;border-color:var(--line2);color:var(--ink)}
-.gs .go:hover{background:var(--panel2)}
-.gs.done .go{border-color:#1DB954;color:#7BE3A0}
-.tip{margin-top:9px;font-size:12.5px;color:var(--dim)}
-.gfin{display:none;align-items:center;gap:12px;margin-top:16px;padding:14px 16px;border-left:3px solid #1DB954;background:var(--panel);font-size:14px;color:var(--soft)}
-.gfin.show{display:flex;animation:in .35s ease-out}
-.gnote{margin:16px 0 0;font-size:12.5px;color:var(--dim);line-height:1.55}
+.gs .act.copied{background:#16A34A}
+.gs .go{background:rgba(255,255,255,.07);color:var(--ink);font-weight:500}
+.gs .go:hover{background:rgba(255,255,255,.12)}
+.gs.done .go{background:rgba(22,163,74,.15);color:#86EFAC}
+.tip{margin-top:10px;font-size:13px;color:var(--dim)}
+.gfin{display:none;align-items:center;gap:10px;margin-top:8px;padding:14px 16px;border-radius:14px;background:rgba(22,163,74,.1);color:#BBF7D0;font-size:14px;font-weight:500}
+.gfin.show{display:flex;animation:rise .4s ease-out}
+.gnote{margin:16px 0 0;font-size:13px;color:var(--dim);line-height:1.55}
 
-@media(max-width:960px){
-  .app{grid-template-columns:minmax(0,1fr)}
-  .l{border-right:0;padding:24px 22px 26px}
-  .hero{padding:44px 0 34px}
-  .r{min-height:520px;padding:44px 22px;border-top:1px solid var(--line)}
-}
-@media(max-width:560px){
-  .sec{display:none}
-  .specs{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-  .specs div:nth-child(3){display:none}
-  .btn{padding:0 18px;font-size:16px}
-  .code b{font-size:14px}
+@media(max-width:720px){
+  .page{padding:20px 20px 22px}
+  .sec span{display:none}
+  .stage{padding:40px 0 34px}
+  .btn,.alt{width:100%;justify-content:space-between}
+  .alt{justify-content:center}
   .steps{grid-template-columns:minmax(0,1fr)}
-  .pct{font-size:68px}
+  .next{padding:22px 20px}
+  .bot{justify-content:center;text-align:center}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<div class="app">
-  <section class="l">
-    <header class="top">
-      <a class="logo" href="#" aria-label="Onde"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="16" fill="#E10600"/><path d="M5 17c3.2-7 6.4-7 9.6 0s6.4 7 9.6 0" stroke="#fff" stroke-width="3.2" fill="none" stroke-linecap="square"/></svg>ONDE</a>
-      <span class="sec"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="7" width="11" height="7.5" stroke="currentColor" stroke-width="1.4"/><path d="M5 7V4.8a3 3 0 0 1 6 0V7" stroke="currentColor" stroke-width="1.4"/></svg>Chiffré de bout en bout</span>
-    </header>
+<canvas id="ribbon" aria-hidden="true"></canvas>
+<div class="light" aria-hidden="true"></div>
 
-    <div class="hero">
-      <p class="kicker"><i></i>Dossier prêt à recevoir</p>
-      <h1 id="name">Ton dossier</h1>
-      <dl class="specs">
-        <div><dt>Taille</dt><dd id="meta">—</dd></div>
-        <div><dt>Contenu</dt><dd>Intégral, à l'identique</dd></div>
-        <div><dt>Sécurité</dt><dd>AES-256, PC à PC</dd></div>
-      </dl>
+<div class="page">
+  <header class="top">
+    <a class="logo" href="#" aria-label="Onde"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="16" fill="#E11D2E"/><path d="M6 17c3-6.5 6-6.5 9 0s6 6.5 9 0" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>Onde</a>
+    <span class="sec"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.75" y="7" width="10.5" height="7.25" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M5.25 7V5a2.75 2.75 0 0 1 5.5 0v2" stroke="currentColor" stroke-width="1.4"/></svg><span>Chiffré de bout en bout</span></span>
+  </header>
 
-      <div class="codebox" id="codebox">
-        <label for="code">Code d'accès (dans le message reçu)</label>
-        <input id="code" placeholder="1234-abcde-fghjk-mnpqr" autocomplete="off" spellcheck="false">
-      </div>
+  <main class="stage">
+    <p class="from">On t'a envoyé un dossier</p>
+    <h1 id="name">Ton dossier</h1>
+    <ul class="meta">
+      <li id="metali"><b id="meta">Taille inconnue</b></li>
+      <li>Copie intégrale, à l'identique</li>
+      <li><svg viewBox="0 0 16 16" fill="none"><rect x="2.75" y="7" width="10.5" height="7.25" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M5.25 7V5a2.75 2.75 0 0 1 5.5 0v2" stroke="currentColor" stroke-width="1.4"/></svg>Privé</li>
+    </ul>
 
-      <div class="cta">
-        <a class="btn" id="dl" href="Recevoir.bat" download="Recevoir avec Onde.bat"><span id="dltxt">Recevoir le dossier</span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12h17m0 0-6-6m6 6-6 6" stroke="#fff" stroke-width="2.2" stroke-linecap="square"/></svg></a>
-        <div class="cbar" id="codeline" hidden><div class="code"><span>Code</span><b id="ref"></b></div><button class="copy" id="copycode" type="button">Copier</button></div>
-      </div>
-      <p class="hint">Première fois : Onde s'installe en une minute et reste sur ton Bureau. <b>Déjà installé ?</b> Ouvre Onde et colle le code.</p>
-      <div class="bad" id="bad">Colle d'abord le code d'accès qui se trouve dans le message reçu.</div>
-      <div class="after" id="after"><div>Ouvre <b>« Recevoir avec Onde »</b> en haut ou en bas de ton navigateur. Choisis où enregistrer : le dossier arrive avec sa progression.</div></div>
+    <div class="codebox" id="codebox">
+      <label for="code">Colle le code reçu dans le message</label>
+      <input id="code" placeholder="1234-abcde-fghjk-mnpqr" autocomplete="off" spellcheck="false">
+    </div>
 
+    <div class="actions">
+      <a class="btn" id="dl" href="Recevoir.bat" download="Recevoir avec Onde.bat"><span id="dltxt">Recevoir le dossier</span><span class="ar"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v15m0 0-6-6m6 6 6-6" stroke="#E11D2E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></a>
+      <a class="alt" id="open" href="#"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="16" fill="#E11D2E"/><path d="M6 17c3-6.5 6-6.5 9 0s6 6.5 9 0" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>J'ai déjà Onde</a>
+    </div>
+    <div class="chip" id="codeline" hidden>Code <b id="ref"></b><button type="button" id="copycode">Copier</button></div>
+    <div class="bad" id="bad">Colle d'abord le code qui se trouve dans le message reçu.</div>
+    <p class="notwin" id="notwin">Ouvre ce lien sur ton ordinateur Windows pour recevoir le dossier.</p>
+
+    <section class="next" id="after" aria-live="polite">
+      <div class="k">Dernière étape</div>
+      <h2 id="nexth">Ouvre le fichier téléchargé</h2>
+      <p>Il se trouve dans les téléchargements de ton navigateur (en haut à droite ou en bas). <b>Onde s'ouvre</b> et te demande où enregistrer : ton dossier arrive avec son nom, à l'identique.</p>
       <ol class="steps">
-        <li id="s1"><b>01 Télécharger</b>Une seule fois</li>
-        <li id="s2"><b>02 Ouvrir</b>Double-clic sur le fichier</li>
-        <li id="s3"><b>03 Recevoir</b>Onde reste sur ton Bureau</li>
+        <li id="s1"><i>1</i>Téléchargé</li>
+        <li id="s2"><i>2</i>Ouvre le fichier</li>
+        <li id="s3"><i>3</i>Choisis où l'enregistrer</li>
       </ol>
-    </div>
+      <div class="stuck">Le fichier ne s'ouvre pas ou Windows le bloque ? <button type="button" id="stuck">Débloquer en 1 minute</button></div>
+    </section>
+  </main>
 
-    <footer class="bot">
-      <button class="help" id="gh" type="button" aria-expanded="false" aria-controls="guide"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.4 3.1 8.2 7.5 9.5 4.4-1.3 7.5-5.1 7.5-9.5V6z" stroke="#E10600" stroke-width="1.8"/><path d="M12 8v5m0 3v.5" stroke="#F2F2F2" stroke-width="2" stroke-linecap="square"/></svg><span>Windows ou le navigateur bloque le fichier ? <b>Débloquer en 1 minute</b></span></button>
-      <span class="legal">Rien n'est stocké en ligne</span>
-    </footer>
-  </section>
-
-  <section class="r" aria-hidden="true">
-    <canvas id="sig"></canvas>
-    <div class="shot">
-      <div class="sb"><span class="logo"><svg class="mark" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#E10600"/><path d="M5 17c3.2-7 6.4-7 9.6 0s6.4 7 9.6 0" stroke="#fff" stroke-width="3.2" fill="none" stroke-linecap="square"/></svg>ONDE</span><span class="w"><i></i><i></i></span></div>
-      <div class="sbody">
-        <div class="st">Réception en cours</div>
-        <div class="ss2" id="mname">Ton dossier</div>
-        <div class="pct"><span id="mpct">0</span><small>%</small></div>
-        <div class="trk"><i id="mbar"></i></div>
-        <div class="stats">
-          <div><span>Transféré</span><b id="mdone">0 Go</b></div>
-          <div><span>Vitesse</span><b id="mspd">—</b></div>
-          <div><span>Restant</span><b id="meta2">—</b></div>
-        </div>
-      </div>
-    </div>
-    <div class="cap">Aperçu · Onde pendant la réception</div>
-  </section>
+  <footer class="bot">
+    <button class="help" id="gh" type="button" aria-expanded="false" aria-controls="guide"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.4M12 16.6v.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Bloqué par Windows ou le navigateur ?</button>
+    <span>Direct de PC à PC · rien n'est stocké en ligne</span>
+  </footer>
 </div>
 
 <aside class="guide" id="guide" aria-label="Déblocage guidé">
   <div class="gtop">
-    <div><h2>Débloquer en 1 minute</h2><p>Suis les étapes, un bouton à chaque fois.</p></div>
-    <button class="x" id="gclose" type="button" aria-label="Fermer"><svg viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2 2 14" stroke="#F2F2F2" stroke-width="1.8"/></svg></button>
+    <div><h2>Débloquer en 1 minute</h2><p>Une étape à la fois, avec le bon bouton.</p></div>
+    <button class="x" id="gclose" type="button" aria-label="Fermer"><svg viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3 3 13" stroke="#F5F5F6" stroke-width="1.8" stroke-linecap="round"/></svg></button>
   </div>
   <div class="gin">
     <div class="tabs" role="tablist">
@@ -255,9 +220,9 @@ h1{margin:0;font:800 clamp(46px,6.4vw,104px)/.9 var(--cond);letter-spacing:-.012
       <div>
         <h4>Le navigateur bloque le fichier</h4>
         <p id="g1txt"></p>
-        <div class="mock"><div class="dlbar"><span class="f">Recevoir avec Onde.bat</span><span class="k hl" id="g1btn">Conserver</span></div></div>
+        <div class="mock"><div class="dlbar"><span class="f" id="g1file">Recevoir avec Onde.bat</span><span class="k hl" id="g1btn">Conserver</span></div></div>
         <div class="acts">
-          <button class="act" type="button" id="copydl"><svg viewBox="0 0 24 24" fill="none"><rect x="8" y="8" width="12" height="12" stroke="currentColor" stroke-width="2"/><path d="M16 8V4H4v12h4" stroke="currentColor" stroke-width="2"/></svg><span>Copier l'adresse</span></button>
+          <button class="act" type="button" id="copydl"><svg viewBox="0 0 24 24" fill="none"><rect x="8" y="8" width="12" height="12" rx="3" stroke="currentColor" stroke-width="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" stroke-width="2"/></svg><span>Copier l'adresse</span></button>
           <button class="go" type="button">C'est fait</button>
         </div>
         <div class="tip" id="g1tip"></div>
@@ -276,7 +241,7 @@ h1{margin:0;font:800 clamp(46px,6.4vw,104px)/.9 var(--cond);letter-spacing:-.012
           <div class="row"><span id="ssrun" style="display:none" class="hl">Exécuter quand même</span><span>Ne pas exécuter</span></div>
         </div></div>
         <div class="acts">
-          <a class="act" href="windowsdefender://appbrowser"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 4.5 6v5.5c0 4.4 3.1 8.2 7.5 9.5 4.4-1.3 7.5-5.1 7.5-9.5V6z" stroke="currentColor" stroke-width="2"/></svg>Ouvrir les réglages</a>
+          <a class="act" href="windowsdefender://appbrowser"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 4.5 6v5.5c0 4.4 3.1 8.2 7.5 9.5 4.4-1.3 7.5-5.1 7.5-9.5V6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>Ouvrir les réglages</a>
           <button class="go" type="button">C'est fait</button>
         </div>
         <div class="tip">Le navigateur demande « Ouvrir Sécurité Windows ? » : clique sur Ouvrir. Tu pourras réactiver ce réglage après la réception.</div>
@@ -287,9 +252,9 @@ h1{margin:0;font:800 clamp(46px,6.4vw,104px)/.9 var(--cond);letter-spacing:-.012
       <span class="n">3</span>
       <div>
         <h4>L'antivirus a supprimé le fichier</h4>
-        <p>Ouvre l'historique de protection, clique sur <b>Recevoir avec Onde</b> › <b>Actions</b> › <b>Autoriser</b>, puis télécharge à nouveau.</p>
+        <p>Ouvre l'historique de protection, clique sur l'élément <b>Onde</b> › <b>Actions</b> › <b>Autoriser</b>, puis télécharge à nouveau.</p>
         <div class="acts">
-          <a class="act" href="windowsdefender://history"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2"/><path d="M12 8v4l3 2" stroke="currentColor" stroke-width="2"/></svg>Ouvrir l'historique</a>
+          <a class="act" href="windowsdefender://history"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2"/><path d="M12 8v4l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Ouvrir l'historique</a>
           <button class="go" type="button">C'est fait</button>
         </div>
       </div>
@@ -299,9 +264,9 @@ h1{margin:0;font:800 clamp(46px,6.4vw,104px)/.9 var(--cond);letter-spacing:-.012
       <span class="n">4</span>
       <div>
         <h4>Onde s'ouvre : choisis où enregistrer</h4>
-        <p>Clique sur <b>Recevoir ici</b> (ou <b>Changer</b>). Si Windows demande l'accès au réseau, clique sur <b>Autoriser</b>. L'icône <b>Onde</b> reste sur ton Bureau.</p>
+        <p>Clique sur <b>Recevoir ici</b> (ou <b>Changer…</b>). Si Windows demande l'accès au réseau, clique sur <b>Autoriser</b>. L'icône <b>Onde</b> reste sur ton Bureau.</p>
         <div class="acts">
-          <a class="act" href="windowsdefender://network"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 0 1 16 0M7.5 12a4.5 4.5 0 0 1 9 0" stroke="currentColor" stroke-width="2"/><rect x="10.5" y="14" width="3" height="3" fill="currentColor"/></svg>Réglages pare-feu</a>
+          <a class="act" href="windowsdefender://network"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 0 1 16 0M7.5 12a4.5 4.5 0 0 1 9 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="15.5" r="1.6" fill="currentColor"/></svg>Réglages du pare-feu</a>
           <button class="go" type="button">C'est fait</button>
         </div>
       </div>
@@ -326,15 +291,23 @@ h1{margin:0;font:800 clamp(46px,6.4vw,104px)/.9 var(--cond);letter-spacing:-.012
   };
   const $ = id => document.getElementById(id);
   const dl = $('dl'), input = $('code'), bad = $('bad');
-  let folder = 'Ton dossier';
-  if (parts[1]) { try { folder = decodeURIComponent(parts[1]); } catch (e) { folder = parts[1]; } $('name').textContent = folder; document.title = 'Onde · ' + folder; }
-  $('mname').textContent = folder;
+  let folder = '';
+  if (parts[1]) { try { folder = decodeURIComponent(parts[1]); } catch (e) { folder = parts[1]; } }
+  if (folder) { $('name').textContent = folder; document.title = folder + ' · Onde'; }
   const size = Number(parts[2]) || 0;
-  if (size > 0) $('meta').textContent = fmt(size);
+  if (size > 0) $('meta').textContent = fmt(size); else $('metali').remove();
+  const safe = (folder || 'Dossier').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 80).replace(/[. ]+$/, '') || 'Dossier';
+  const file = safe + ' - Onde.bat';
+  dl.setAttribute('download', file);
+  $('g1file').textContent = file;
+  $('nexth').textContent = 'Ouvre « ' + safe + ' - Onde »';
+  if (!/Windows/i.test(navigator.userAgent)) $('notwin').classList.add('show');
+
   let code = '';
   const setCode = c => {
     code = c;
     $('ref').textContent = c; $('codeline').hidden = false;
+    $('open').href = 'onde://recv/' + c;
     const bat = '@echo off\r\nchcp 65001 >nul\r\ntitle Onde\r\nset "TS_MODE=recv"\r\nset "TS_CODE=' + c + '"\r\npowershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=\'Tls12\'; iex (irm https://maltablender.github.io/transfert/app.txt)"\r\n';
     dl.href = URL.createObjectURL(new Blob([bat], {type: 'application/octet-stream'}));
   };
@@ -348,6 +321,8 @@ h1{margin:0;font:800 clamp(46px,6.4vw,104px)/.9 var(--cond);letter-spacing:-.012
       else { code = ''; input.classList.remove('good'); }
     });
   }
+  const need = e => { if (!code) { e.preventDefault(); bad.style.display = 'block'; input.focus(); return true; } return false; };
+  $('open').addEventListener('click', e => { need(e); });
   $('copycode').addEventListener('click', async () => {
     const b = $('copycode');
     try { await navigator.clipboard.writeText(code); } catch (e) {}
@@ -357,25 +332,26 @@ h1{margin:0;font:800 clamp(46px,6.4vw,104px)/.9 var(--cond);letter-spacing:-.012
 
   /* ---- tiroir de déblocage ---- */
   const guide = $('guide'), gh = $('gh');
-  const openGuide = (o) => { guide.classList.toggle('open', o); gh.setAttribute('aria-expanded', String(o)); };
+  const openGuide = o => { guide.classList.toggle('open', o); gh.setAttribute('aria-expanded', String(o)); };
   gh.addEventListener('click', () => openGuide(true));
+  $('stuck').addEventListener('click', () => openGuide(true));
   $('gclose').addEventListener('click', () => openGuide(false));
   $('scrim').addEventListener('click', () => openGuide(false));
   addEventListener('keydown', e => { if (e.key === 'Escape') openGuide(false); });
 
   dl.addEventListener('click', e => {
-    if (!code) { e.preventDefault(); bad.style.display = 'block'; input.focus(); return; }
+    if (need(e)) return;
     $('after').classList.add('show');
     $('s1').classList.add('on'); $('s2').classList.add('on');
     $('dltxt').textContent = 'Télécharger à nouveau';
-    if (innerWidth > 960) setTimeout(() => openGuide(true), 900);
+    setTimeout(() => $('after').scrollIntoView({behavior: 'smooth', block: 'center'}), 120);
   });
 
   const steps = [...document.querySelectorAll('.gs')];
   const TXT = {
-    chrome: 'Ouvre les téléchargements de Chrome (copie l\'adresse ci-dessous, colle-la dans la barre du haut, puis Entrée). Sur <b>Recevoir avec Onde</b>, clique sur <b>Conserver</b>, puis <b>Conserver quand même</b>.',
-    edge: 'Ouvre les téléchargements d\'Edge (copie l\'adresse ci-dessous, colle-la dans la barre du haut, puis Entrée). Sur le fichier : <b>…</b> › <b>Conserver</b> › <b>Afficher plus</b> › <b>Conserver quand même</b>.',
-    firefox: 'Ouvre les téléchargements de Firefox (copie l\'adresse ci-dessous, colle-la dans la barre du haut, puis Entrée). Clic droit sur le fichier, puis <b>Autoriser le téléchargement</b>.'
+    chrome: 'Ouvre les téléchargements de Chrome : copie l\'adresse ci-dessous, colle-la dans la barre du haut, puis Entrée. Sur le fichier Onde, clique sur <b>Conserver</b>, puis <b>Conserver quand même</b>.',
+    edge: 'Ouvre les téléchargements d\'Edge : copie l\'adresse ci-dessous, colle-la dans la barre du haut, puis Entrée. Sur le fichier : <b>…</b> › <b>Conserver</b> › <b>Afficher plus</b> › <b>Conserver quand même</b>.',
+    firefox: 'Ouvre les téléchargements de Firefox : copie l\'adresse ci-dessous, colle-la dans la barre du haut, puis Entrée. Clic droit sur le fichier, puis <b>Autoriser le téléchargement</b>.'
   };
   const DLURL = {chrome: 'chrome://downloads', edge: 'edge://downloads', firefox: 'about:downloads'};
   const BTN = {chrome: 'Conserver', edge: 'Conserver', firefox: 'Autoriser le téléchargement'};
@@ -387,7 +363,7 @@ h1{margin:0;font:800 clamp(46px,6.4vw,104px)/.9 var(--cond);letter-spacing:-.012
   };
   $('copydl').addEventListener('click', async () => {
     const b = $('copydl'), t = b.querySelector('span');
-    try { await navigator.clipboard.writeText(DLURL[browser]); t.textContent = 'Copié, colle-la'; }
+    try { await navigator.clipboard.writeText(DLURL[browser]); t.textContent = 'Copiée, colle-la'; }
     catch (e) { t.textContent = DLURL[browser]; }
     b.classList.add('copied');
     setTimeout(() => { b.classList.remove('copied'); t.textContent = 'Copier l\'adresse'; }, 3000);
@@ -407,33 +383,34 @@ h1{margin:0;font:800 clamp(46px,6.4vw,104px)/.9 var(--cond);letter-spacing:-.012
   setInterval(() => { ssPhase = 1 - ssPhase; $('sslink').classList.toggle('hl', ssPhase === 0); $('ssrun').style.display = ssPhase === 1 ? '' : 'none'; }, 2200);
   render();
 
-  /* ---- aperçu produit : signal + réception simulée ---- */
-  const cv = $('sig'), cx = cv.getContext('2d');
+  /* ---- globe : la signature visuelle d'Onde ---- */
+  const cv = $('ribbon'), cx = cv.getContext('2d');
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const total = size || 98.2e9, speed = 84e6;
-  let t0 = performance.now();
-  const frame = now => {
-    const w = cv.clientWidth, h = cv.clientHeight, dpr = Math.min(devicePixelRatio || 1, 2);
-    if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const P = [], M = 5200, ga = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < M; i++) {
+    const y = 1 - (i + .5) / M * 2, r = Math.sqrt(1 - y * y), th = ga * i;
+    P.push([Math.cos(th) * r, y, Math.sin(th) * r, (i * 7919) % 13 === 0]);
+  }
+  const draw = now => {
+    const w = innerWidth, h = innerHeight, dpr = Math.min(devicePixelRatio || 1, 2);
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
     cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.clearRect(0, 0, w, h);
-    const t = now / 1000, mid = h / 2, step = 5;
-    for (let x = 0; x < w; x += step) {
-      const k = x / w, env = Math.pow(Math.sin(Math.PI * k), .9);
-      const v = (Math.sin(x * .021 - t * 2.2) * .55 + Math.sin(x * .053 + t * 3.1) * .3 + Math.sin(x * .009 - t * .9) * .5) * env;
-      const a = Math.abs(v) * h * .27 + 1;
-      cx.fillStyle = Math.abs(v) > .62 ? '#E10600' : 'rgba(255,255,255,' + (.05 + env * .12).toFixed(3) + ')';
-      cx.fillRect(x, mid - a, 2, a * 2);
+    const R = Math.min(w * .42, h * .62), ox = w / 2, oy = h * .6 + R;
+    const a = (still ? 0 : now / 1000) * .045, ca = Math.cos(a), sa = Math.sin(a), tl = -.42, ct = Math.cos(tl), st = Math.sin(tl);
+    for (const [x0, y0, z0, hi] of P) {
+      const x = x0 * ca + z0 * sa, z1 = -x0 * sa + z0 * ca;
+      const y = y0 * ct - z1 * st, z = y0 * st + z1 * ct;
+      if (z < 0) continue;
+      const px = ox + x * R, py = oy + y * R;
+      if (py > h + 4 || px < -4 || px > w + 4) continue;
+      const lim = Math.min(1, (h - py) / (h * .3) + .4), al = (.22 + .78 * z * z) * lim;
+      cx.fillStyle = hi ? 'rgba(255,255,255,' + (al * .9).toFixed(3) + ')' : 'rgba(225,29,46,' + al.toFixed(3) + ')';
+      const s = hi ? 1.7 : 1.1 + z * .9;
+      cx.fillRect(px - s / 2, py - s / 2, s, s);
     }
-    const p = ((now - t0) / 9000) % 1.15, pc = Math.min(1, p);
-    $('mpct').textContent = Math.floor(pc * 100);
-    $('mbar').style.width = (pc * 100) + '%';
-    $('mdone').textContent = fmt(total * pc);
-    $('mspd').textContent = pc < 1 ? fmt(speed + Math.sin(t * 1.7) * 6e6) + '/s' : '—';
-    const left = total * (1 - pc) / speed;
-    $('meta2').textContent = pc >= 1 ? 'Terminé' : left > 3600 ? Math.floor(left / 3600) + ' h ' + String(Math.floor(left % 3600 / 60)).padStart(2, '0') : Math.ceil(left / 60) + ' min';
-    if (!still) requestAnimationFrame(frame);
+    if (!still) requestAnimationFrame(draw);
   };
-  requestAnimationFrame(frame);
+  requestAnimationFrame(draw);
 }
 </script>
 </body>
