@@ -746,11 +746,9 @@ function Read-Line([string]$l) {
                 $S.HashMax = $max
                 $tot = if ($S.Size -gt 0) { $S.Size } else { $max }
                 $hp = if ($tot -gt 0) { [int][math]::Min(100, [math]::Floor(100 * ($S.HashDone + $cur) / $tot)) } else { $pct }
-                if ($hp -ge 100) {
-                    if ($S.View -eq 'VWait') { $ui.WaitState.Text = 'Dossier prêt ✓ · en attente de ton client'; $ui.WaitInfo.Text = 'Le dossier est préparé et vérifié : ton client peut le recevoir.' }
-                    elseif ($S.View -eq 'VPrep') { $ui.PrepTitle.Text = 'Dossier prêt'; $ui.PrepSub.Text = 'Connexion à l''expéditeur…' }
-                } else {
-                    if ($S.View -eq 'VWait') { $ui.WaitState.Text = "Préparation du dossier… $hp %"; $ui.WaitInfo.Text = 'Attends 100 % : à ce moment ton dossier sera prêt à être reçu par ton client.' }
+                $S.HashPct = $hp
+                if ($hp -lt 100) {
+                    if ($S.View -eq 'VWait') { $ui.WaitState.Text = "Préparation du dossier… $hp %"; $ui.WaitInfo.Text = 'Le partage se débloquera à 100 %. Patiente quelques instants…' }
                     elseif ($S.View -eq 'VPrep') { $ui.PrepTitle.Text = "Préparation… $hp %"; $ui.PrepSub.Text = 'Vérification des fichiers…' }
                 }
             } elseif ($S.View -eq 'VRun') { $ui.CurFile.Text = 'Vérification finale des fichiers…'; if ($S.Speed -gt 0) { $ui.StSpeed.Text = (Format-Size $S.Speed) + '/s' } }
@@ -822,21 +820,35 @@ function Send-Ready {
     $msg = "Bonjour,`r`n`r`nVoici « $($S.Name) » ($(Format-Size $S.Size)), envoyé avec Onde, chiffré de bout en bout.`r`n`r`nClique sur ce lien pour le recevoir :`r`n$link`r`n`r`nCode (si Onde te le demande) : $($S.Code)`r`nLien à usage unique : il ne fonctionne plus une fois le dossier reçu."
     $ui.MsgBox.Text = $msg
     $ui.CodeText.Text = $S.Code
-    $ok = Copy-Text $msg
-    $ui.WaitSub.Text = if ($ok) { "Le message est copié : colle-le à ton client avec Ctrl + V (mail, SMS, WhatsApp…)." } else { 'Copie ce message et envoie-le à ton client.' }
-    $ui.WaitState.Text = 'En attente de ton client…'
-    $ui.WaitInfo.Text = ('{0:N0} fichiers · {1:N0} dossiers · {2}. Le transfert démarre dès que ton client ouvre le fichier reçu.' -f $sc.Files, $sc.Dirs, (Format-Size $S.Size))
+    $S.SendReady = $false; $S.SendStart = Get-Date; $S.HashSeen = $false; $S.HashPct = 0
+    $ui.BtnCopy.IsEnabled = $false; $ui.BtnCopyCode.IsEnabled = $false; $ui.BtnSelfTest.IsEnabled = $false
+    $ui.BtnCopy.Opacity = 0.5; $ui.BtnCopyCode.Opacity = 0.5; $ui.BtnSelfTest.Opacity = 0.5
+    $ui.BtnCopy.Content = 'Préparation du dossier…'
+    $ui.BtnSelfTest.Content = "M'envoyer ce dossier à moi-même (test sur ce PC)  →"
+    $ui.WaitSub.Text = "Patiente jusqu'à « Dossier prêt » : le message et le code se débloqueront, puis tu les donnes à ton client."
+    $ui.WaitState.Text = 'Préparation du dossier…'
+    $ui.WaitInfo.Text = ('{0:N0} fichiers · {1:N0} dossiers · {2}.' -f $sc.Files, $sc.Dirs, (Format-Size $S.Size))
     if ($sc.Errors -gt 0) {
         $ui.WaitWarn.Text = "Attention : $($sc.Errors) élément(s) illisible(s) (accès refusé), par exemple : " + (($sc.Bad | Select-Object -First 2) -join ', ')
         $ui.WaitWarn.Visibility = 'Visible'
     } else { $ui.WaitWarn.Visibility = 'Collapsed' }
     Show-View 'VWait'
-    if ($ok) { Flash-Copied $ui.BtnCopy '✓  Message copié' }
     $S.Retries = 0
     Start-SendCroc
 }
 function Remove-Manifest {
     if ($S.Manifest) { try { Remove-Item -LiteralPath (Split-Path $S.Manifest -Parent) -Recurse -Force } catch {}; $S.Manifest = $null }
+}
+function Set-SendReady {
+    if ($S.SendReady) { return }
+    $S.SendReady = $true
+    $ui.BtnCopy.IsEnabled = $true; $ui.BtnCopyCode.IsEnabled = $true; $ui.BtnSelfTest.IsEnabled = $true
+    $ui.BtnCopy.Opacity = 1; $ui.BtnCopyCode.Opacity = 1; $ui.BtnSelfTest.Opacity = 1
+    $ui.BtnCopy.Content = 'Copier le message pour mon client'
+    $ui.WaitSub.Text = 'Message copié : colle-le à ton client (Ctrl + V). Il peut recevoir maintenant.'
+    $ui.WaitState.Text = 'Dossier prêt ✓ · en attente de ton client'
+    $ui.WaitInfo.Text = 'Le dossier est préparé et vérifié : ton client peut le recevoir.'
+    if (Copy-Text $ui.MsgBox.Text) { Flash-Copied $ui.BtnCopy '✓  Message copié' }
 }
 function Send-Finished {
     Remove-Manifest
@@ -1078,9 +1090,10 @@ function Update-Fx {
 # ---------------------------------------------------------------- boucle de contrôle (4 fois par seconde)
 function Update-Logic {
     if ($S.Flash.Count) { Reset-Flash }
-    if ($Mode -eq 'send' -and $S.View -eq 'VWait' -and -not $S.GotProgress -and $S.HashSeen -and $S.LastHash -and ((Get-Date) - $S.LastHash).TotalSeconds -gt 2.5) {
-        $ui.WaitState.Text = 'Dossier prêt ✓ · en attente de ton client'
-        $ui.WaitInfo.Text = 'Le dossier est préparé et vérifié : ton client peut le recevoir.'
+    if ($Mode -eq 'send' -and $S.View -eq 'VWait' -and -not $S.SendReady) {
+        if ($S.GotProgress -or ($S.HashSeen -and $S.HashPct -ge 100) -or ($S.HashSeen -and $S.LastHash -and ((Get-Date) - $S.LastHash).TotalSeconds -gt 2.5) -or (-not $S.HashSeen -and $S.SendStart -and ((Get-Date) - $S.SendStart).TotalSeconds -gt 5)) {
+            Set-SendReady
+        }
     }
     if ($Mode -eq 'recv' -and $S.View -eq 'VPrep' -and $S.Running -and $S.StartTime -and -not $S.GotProgress -and ((Get-Date) - $S.StartTime).TotalSeconds -gt 7) {
         $ui.PrepTitle.Text = "En attente de l'expéditeur…"
