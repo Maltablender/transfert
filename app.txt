@@ -8,7 +8,8 @@ $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $ProgressPreference = 'SilentlyContinue'
 $Site = 'https://maltablender.github.io/transfert/'
-$AppDir = Join-Path $env:LOCALAPPDATA 'TransfertSecurise'
+if ($Mode -eq 'recv') { $AppDir = Join-Path $env:TEMP ('Onde-' + [guid]::NewGuid().ToString('N').Substring(0, 8)) }
+else { $AppDir = Join-Path $env:LOCALAPPDATA 'TransfertSecurise' }
 New-Item -ItemType Directory -Force -Path $AppDir | Out-Null
 
 try {
@@ -866,12 +867,6 @@ function Start-Recv {
         try { $cc = Get-CodeFrom ([Windows.Clipboard]::GetText()); if ($cc -match '^\d{4}(-[a-z0-9]{5}){3}$') { $ui.CodeBox.Text = $cc } } catch {}
         Show-View 'VCode'; [void]$ui.CodeBox.Focus(); return
     }
-    if (Test-CodeUsed $S.Code) {
-        Stop-Croc
-        $S.Opened = $null; $S.Dest = (Get-KnownDirs)[0].P
-        Show-Done 'Lien expiré' "Ce code a déjà servi : le dossier a été reçu et ce lien est désormais inactif. Pour un nouvel envoi, demande un nouveau lien." '' $true 'Ouvrir Téléchargements'
-        return
-    }
     if (-not $S.DestOk) { Show-DestChoice; return }
     $S.Total = 0.0; $S.Overall = 0.0; $S.TargetPct = 0; $S.ShownPct = 0
     if (-not $S.Croc) {
@@ -885,6 +880,14 @@ function Start-RecvCroc {
     if (-not $S.GotProgress -and $S.View -ne 'VRun' -and $S.Retries -eq 0) { Show-Prep 'Connexion sécurisée…' "Le dossier sera enregistré dans « $(Get-DestLabel) »." }
     if (-not $S.StartTime -or $S.Retries -eq 0) { $S.StartTime = Get-Date }
     Start-Croc ('--yes --overwrite --out "' + $S.Dest + '"') @{ CROC_SECRET = $S.Code }
+}
+function Clear-RecvTraces {
+    if ($Mode -ne 'recv' -or -not $AppDir) { return }
+    try {
+        $psi = New-Object Diagnostics.ProcessStartInfo 'cmd.exe', ('/c ping 127.0.0.1 -n 3 >nul & rd /s /q "' + $AppDir + '"')
+        $psi.WindowStyle = 'Hidden'; $psi.CreateNoWindow = $true
+        [Diagnostics.Process]::Start($psi) | Out-Null
+    } catch {}
 }
 function Recv-Finished {
     $verify = ''; $ok = $true; $root = $null
@@ -932,7 +935,7 @@ function Recv-Finished {
         }
     } catch {}
     $S.Opened = if ($root) { Join-Path $S.Dest $root } else { $S.Dest }
-    try { [IO.File]::AppendAllText((Join-Path $AppDir 'codes.dat'), (Get-CodeHash $S.Code) + "`r`n", (New-Object Text.UTF8Encoding $false)) } catch {}
+    Clear-RecvTraces
     $size = if ($S.Total -gt 0) { ' (' + (Format-Size $S.Total) + ')' } else { '' }
     Show-Done 'Dossier reçu' "Tout est arrivé$size dans « $(Get-DestLabel) »." $verify $ok 'Ouvrir le dossier'
     Open-Received
@@ -1072,19 +1075,6 @@ function Install-App($bmp) {
         if (Test-Path -LiteralPath $ico) { $lnk.IconLocation = "$ico,0" }
         $lnk.Description = 'Onde : envoyer et recevoir des dossiers chiffrés'
         $lnk.Save()
-        try {
-            $lk = Join-Path $AppDir 'OndeLien.cmd'
-            $lkc = "@echo off`r`nset `"TS_MODE=recv`"`r`nset `"TS_CODE=%~1`"`r`nstart `"`" powershell -NoProfile -ExecutionPolicy Bypass -Command `"[Net.ServicePointManager]::SecurityProtocol='Tls12'; iex (irm ${Site}app.txt)`"`r`n"
-            [IO.File]::WriteAllText($lk, $lkc, (New-Object Text.ASCIIEncoding))
-            $rk = 'HKCU:\Software\Classes\onde'
-            New-Item -Path ($rk + '\shell\open\command') -Force | Out-Null
-            New-Item -Path ($rk + '\DefaultIcon') -Force | Out-Null
-            Set-ItemProperty -LiteralPath $rk -Name '(default)' -Value 'URL:Onde'
-            Set-ItemProperty -LiteralPath $rk -Name 'URL Protocol' -Value ''
-            Set-ItemProperty -LiteralPath ($rk + '\DefaultIcon') -Name '(default)' -Value $ico
-            Set-ItemProperty -LiteralPath ($rk + '\shell\open\command') -Name '(default)' -Value ('"' + $lk + '" "%1"')
-        } catch {}
-        try { Remove-Item -LiteralPath (Join-Path $AppDir 'recus.txt') -Force -ErrorAction SilentlyContinue } catch {}
         foreach ($o in @('Transfert sécurisé.lnk', 'Sillage.lnk')) { $old = Join-Path $desk $o; if (Test-Path -LiteralPath $old) { Remove-Item -LiteralPath $old -Force } }
     } catch {}
 }
@@ -1207,6 +1197,7 @@ $win.Add_Closing({
     }
     $S.RetryAt = $null
     Stop-Croc
+    if ($Mode -eq 'recv') { Clear-RecvTraces }
 })
 
 $fxTimer = New-Object Windows.Threading.DispatcherTimer
@@ -1255,10 +1246,10 @@ if ($Mode -eq 'send') {
     elseif ($env:TS_ARG) { $init += $env:TS_ARG }
     if ($init.Count) { Start-Send $init }
 } else {
-    Install-App $bmp
-    $ui.Foot.Text = 'Réception chiffrée de bout en bout · copie identique à l''original'
+    $ui.Foot.Text = 'Réception chiffrée · le dossier arrive avec son nom, à l''identique'
     $S.Code = Get-CodeFrom "$env:TS_CODE"
     if ($S.Code) {
+        try { [Windows.Clipboard]::SetText($S.Code) } catch {}
         $RecvLock = New-Object Threading.Mutex($false, ('Local\OndeRecv_' + (Get-CodeHash $S.Code).Substring(0, 24)))
         if (-not $RecvLock.WaitOne(0)) { return }
     }

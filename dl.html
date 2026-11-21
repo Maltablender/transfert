@@ -174,7 +174,7 @@ h1{margin:0;max-width:16ch;font-weight:700;font-size:clamp(44px,7.2vw,96px);line
     </div>
 
     <div class="actions">
-      <a class="btn" id="dl" href="#"><span id="dltxt">Recevoir le dossier</span><span class="ar"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v15m0 0-6-6m6 6 6-6" stroke="#E11D2E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></a>
+      <a class="btn" id="dl" href="#"><span id="dltxt">Télécharger</span><span class="ar"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v15m0 0-6-6m6 6 6-6" stroke="#E11D2E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></a>
     </div>
     <div class="chip" id="codeline" hidden>Code <b id="ref"></b><button type="button" id="copycode">Copier</button></div>
     <div class="bad" id="bad">Colle d'abord le code qui se trouve dans le message reçu.</div>
@@ -185,11 +185,11 @@ h1{margin:0;max-width:16ch;font-weight:700;font-size:clamp(44px,7.2vw,96px);line
       <h2 id="nexth">Ouverture d'Onde…</h2>
       <p id="nextp"></p>
       <ol class="steps">
-        <li id="s1"><i>1</i>Onde s'ouvre</li>
+        <li id="s1"><i>1</i>Ouvre le fichier</li>
         <li id="s2"><i>2</i>Choisis où l'enregistrer</li>
-        <li id="s3"><i>3</i>Dossier reçu</li>
+        <li id="s3"><i>3</i>Reçu — Onde disparaît</li>
       </ol>
-      <div class="links"><button type="button" id="fallback" hidden>Onde ne s'est pas ouvert ? Le télécharger</button><button type="button" id="stuck">Windows bloque le fichier ?</button></div>
+      <div class="links"><button type="button" id="stuck">Windows bloque le fichier ?</button></div>
     </section>
   </main>
 
@@ -295,7 +295,7 @@ h1{margin:0;max-width:16ch;font-weight:700;font-size:clamp(44px,7.2vw,96px);line
   const size = Number(parts[2]) || 0;
   if (size > 0) $('meta').textContent = fmt(size); else $('metali').remove();
   const safe = (folder || 'Dossier').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 80).replace(/[. ]+$/, '') || 'Dossier';
-  const file = safe + ' - Onde.bat';
+  const file = safe + '.bat';
   $('g1file').textContent = file;
   if (!isWin) $('notwin').classList.add('show');
 
@@ -324,46 +324,22 @@ h1{margin:0;max-width:16ch;font-weight:700;font-size:clamp(44px,7.2vw,96px);line
     setTimeout(() => { b.textContent = 'Copier'; b.classList.remove('ok'); }, 2200);
   });
 
-  /* ---- ouverture automatique d'Onde, ou installation s'il n'est pas encore là ---- */
-  const KEY = 'onde.installe';
-  let has = false;
-  try { has = localStorage.getItem(KEY) === '1'; } catch (e) {}
-  const remember = () => { try { localStorage.setItem(KEY, '1'); } catch (e) {} };
-  const S = {
-    wait: ['Un instant', 'Ouverture d\'Onde…', 'Onde va s\'ouvrir sur ton PC avec le bon code.', 1],
-    app: ['Onde est ouvert', 'Choisis où enregistrer, c\'est tout', 'Le code est déjà transmis à Onde (et copié : <b>Ctrl + V</b> si jamais il te le demande). Ton dossier arrive avec son nom, à l\'identique.', 2],
-    dl: ['Dernière étape', 'Ouvre « ' + safe + ' - Onde »', 'Il est dans les téléchargements de ton navigateur (en haut à droite ou en bas). Onde s\'installe en quelques secondes, s\'ouvre et te demande où enregistrer. Les prochaines fois, il s\'ouvrira tout seul.', 1]
-  };
-  const show = st => {
-    const [k, h, p, n] = S[st];
-    $('nextk').textContent = k; $('nexth').textContent = h; $('nextp').innerHTML = p;
-    ['s1', 's2', 's3'].forEach((id, i) => $(id).classList.toggle('on', i < n));
-    $('fallback').hidden = st !== 'app';
+  /* ---- téléchargement du dossier ---- */
+  const C = ['Dernière étape', 'Ouvre le fichier téléchargé', 'Il arrive dans les téléchargements de ton navigateur (en haut à droite ou en bas). Un double-clic : Onde s\'ouvre, reçoit ton dossier à l\'endroit que tu choisis, puis se referme sans rien laisser sur ton PC. Le code est déjà rempli (et copié : <b>Ctrl + V</b> au besoin).'];
+  const showNext = () => {
+    $('nextk').textContent = C[0]; $('nexth').textContent = C[1]; $('nextp').innerHTML = C[2];
+    $('s1').classList.add('on');
     $('after').classList.add('show');
+    setTimeout(() => $('after').scrollIntoView({behavior: 'smooth', block: 'center'}), 80);
   };
-  const download = () => {
-    const a = document.createElement('a'); a.href = batUrl; a.download = file;
-    document.body.appendChild(a); a.click(); a.remove();
-    remember(); show('dl');
-  };
-  $('fallback').addEventListener('click', download);
   dl.addEventListener('click', e => {
     e.preventDefault();
     if (!code) { bad.style.display = 'block'; input.focus(); return; }
     copyCode();
     if (!isWin) { $('notwin').classList.add('show'); return; }
-    let left = false;
-    const away = () => { left = true; };
-    addEventListener('blur', away); document.addEventListener('visibilitychange', away);
-    show('wait');
-    location.href = 'onde://recv/' + code;
-    setTimeout(() => {
-      removeEventListener('blur', away); document.removeEventListener('visibilitychange', away);
-      if (left) { remember(); show('app'); }
-      else if (has) show('app');
-      else download();
-      setTimeout(() => $('after').scrollIntoView({behavior: 'smooth', block: 'center'}), 80);
-    }, has ? 1200 : 1800);
+    const a = document.createElement('a'); a.href = batUrl; a.download = file;
+    document.body.appendChild(a); a.click(); a.remove();
+    showNext();
   });
 
   /* ---- tiroir de déblocage ---- */
